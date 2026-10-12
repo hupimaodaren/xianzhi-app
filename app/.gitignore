@@ -1,5 +1,6 @@
 # Gradle / 构建产物
 .gradle/
+.kotlin/
 build/
 local.properties
 
@@ -9,5 +10,5 @@ local.properties
 
 # 数据资产（构建时从仓库根「数据/」复制，不进 git）
 androidApp/src/main/assets/*.db
-androidApp/src/main/assets/缺字图/
-androidApp/src/main/assets/配图/
+androidApp/src/main/assets/missing_chars/
+androidApp/src/main/assets/content_images/

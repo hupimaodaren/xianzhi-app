@@ -16,8 +16,9 @@ val copyDbToAssets = tasks.register<Copy>("copyDbToAssets") {
 }
 
 val copyMissingCharsToAssets = tasks.register<Copy>("copyMissingCharsToAssets") {
+    // assets 目录必须 ASCII：aapt2 在部分系统上对非 ASCII 路径有编码问题
     from(dataDir.resolve("缺字图"))
-    into(layout.projectDirectory.dir("src/main/assets/缺字图"))
+    into(layout.projectDirectory.dir("src/main/assets/missing_chars"))
     onlyIf { dataDir.resolve("缺字图").isDirectory }
 }
 
@@ -27,7 +28,7 @@ tasks.matching { it.name == "preBuild" }.configureEach {
 
 android {
     namespace = "org.xadfz.xianzhi"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "org.xadfz.xianzhi"

@@ -1,10 +1,9 @@
 package org.xadfz.xianzhi.ui
 
-import androidx.compose.runtime.CompositionLocal
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import org.xadfz.xianzhi.settings.SettingsKeys
 import org.xadfz.xianzhi.settings.SettingsStore
 
@@ -19,27 +18,31 @@ enum class ThemeMode(val value: Int) {
 
 /** 可观察的阅读/外观设置，修改即时生效并持久化 */
 class SettingsState(private val store: SettingsStore) {
-    var fontSize by mutableStateOf(store.getInt(SettingsKeys.FONT_SIZE, 16))
-        private set
-    var lineSpacing by mutableStateOf(store.getFloat(SettingsKeys.LINE_SPACING, 1.5f))
-        private set
-    var themeMode by mutableStateOf(ThemeMode.of(store.getInt(SettingsKeys.THEME_MODE, 0)))
-        private set
+    private val _fontSize = mutableIntStateOf(store.getInt(SettingsKeys.FONT_SIZE, 16))
+    var fontSize: Int
+        get() = _fontSize.intValue
+        set(value) {
+            val v = value.coerceIn(14, 28)
+            _fontSize.intValue = v
+            store.putInt(SettingsKeys.FONT_SIZE, v)
+        }
 
-    fun setFontSize(value: Int) {
-        fontSize = value.coerceIn(14, 28)
-        store.putInt(SettingsKeys.FONT_SIZE, fontSize)
-    }
+    private val _lineSpacing = mutableStateOf(store.getFloat(SettingsKeys.LINE_SPACING, 1.5f))
+    var lineSpacing: Float
+        get() = _lineSpacing.value
+        set(value) {
+            val v = value.coerceIn(1.2f, 2.0f)
+            _lineSpacing.value = v
+            store.putFloat(SettingsKeys.LINE_SPACING, v)
+        }
 
-    fun setLineSpacing(value: Float) {
-        lineSpacing = value.coerceIn(1.2f, 2.0f)
-        store.putFloat(SettingsKeys.LINE_SPACING, lineSpacing)
-    }
-
-    fun setThemeMode(mode: ThemeMode) {
-        themeMode = mode
-        store.putInt(SettingsKeys.THEME_MODE, mode.value)
-    }
+    private val _themeMode = mutableStateOf(ThemeMode.of(store.getInt(SettingsKeys.THEME_MODE, 0)))
+    var themeMode: ThemeMode
+        get() = _themeMode.value
+        set(value) {
+            _themeMode.value = value
+            store.putInt(SettingsKeys.THEME_MODE, value.value)
+        }
 }
 
-val LocalSettings: CompositionLocal<SettingsState?> = compositionLocalOf { null }
+val LocalSettings: ProvidableCompositionLocal<SettingsState?> = compositionLocalOf { null }

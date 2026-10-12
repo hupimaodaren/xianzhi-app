@@ -45,7 +45,7 @@ kotlin {
 
 android {
     namespace = "org.xadfz.xianzhi.shared"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 24

@@ -35,7 +35,7 @@ object AndroidDataDeployer {
         val missingDir = File(dir, DIR_MISSING)
         if (!missingDir.exists()) {
             message = "正在复制缺字图…"
-            copyAssetDir(ctx, DIR_MISSING, missingDir)
+            copyAssetDir(ctx, ASSET_DIR_MISSING, missingDir)
         }
 
         var contentDir: File? = null
@@ -43,7 +43,7 @@ object AndroidDataDeployer {
             contentDir = File(dir, DIR_CONTENT)
             if (!contentDir.exists()) {
                 message = "正在复制配图…"
-                copyAssetDir(ctx, DIR_CONTENT, contentDir)
+                copyAssetDir(ctx, ASSET_DIR_CONTENT, contentDir)
             }
         }
 
@@ -58,8 +58,12 @@ object AndroidDataDeployer {
 
     private const val ASSET_DB = "xianzhi.db"
     private const val ASSET_IMG_DB = "xianzhi_img.db"
-    private const val DIR_MISSING = "缺字图"
-    private const val DIR_CONTENT = "配图"
+
+    // assets 内必须用 ASCII 目录名（aapt2 编码限制）；复制到 filesDir 后仍用 ASCII 名
+    private const val ASSET_DIR_MISSING = "missing_chars"
+    private const val ASSET_DIR_CONTENT = "content_images"
+    private const val DIR_MISSING = "missing_chars"
+    private const val DIR_CONTENT = "content_images"
 
     private fun assetExists(ctx: Context, name: String): Boolean =
         runCatching { ctx.assets.open(name).use { } }.isSuccess

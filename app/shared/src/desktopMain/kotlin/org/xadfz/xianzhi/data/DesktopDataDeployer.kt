@@ -10,7 +10,10 @@ import java.io.File
 object DesktopDataDeployer {
 
     fun ensureData(): AppContainer {
-        val appRoot = File(System.getenv("APPDATA") ?: System.getProperty("user.home"), "xianzhi")
+        // 可用 -Dxianzhi.home=... 覆盖数据根目录（开发期/便携版场景）；默认 %APPDATA%\xianzhi
+        val override = System.getProperty("xianzhi.home")
+        val appRoot = override?.let { File(it) }
+            ?: File(System.getenv("APPDATA") ?: System.getProperty("user.home"), "xianzhi")
         val dataDir = File(appRoot, "data").apply { mkdirs() }
 
         val source = findDevDataDir()
@@ -28,14 +31,14 @@ object DesktopDataDeployer {
 
         val missingDir = File(dataDir, DIR_MISSING)
         if (!missingDir.exists()) {
-            source?.let { copyDirPreserving(File(it, DIR_MISSING), missingDir) }
+            source?.let { copyDirPreserving(File(it, SRC_DIR_MISSING), missingDir) }
         }
 
         var contentDir: File? = null
         if (imageEdition) {
             contentDir = File(dataDir, DIR_CONTENT)
             if (!contentDir.exists()) {
-                source?.let { copyDirPreserving(File(it, DIR_CONTENT), contentDir) }
+                source?.let { copyDirPreserving(File(it, SRC_DIR_CONTENT), contentDir) }
             }
         }
 
@@ -47,8 +50,11 @@ object DesktopDataDeployer {
         )
     }
 
-    private const val DIR_MISSING = "缺字图"
-    private const val DIR_CONTENT = "配图"
+    // 部署目标统一 ASCII 名（与 Android 端一致）；源目录是仓库「数据/」下的中文名
+    private const val SRC_DIR_MISSING = "缺字图"
+    private const val SRC_DIR_CONTENT = "配图"
+    private const val DIR_MISSING = "missing_chars"
+    private const val DIR_CONTENT = "content_images"
 
     /** 开发期候选：desktopApp 运行工作目录为 app/desktopApp，仓库根在两级之上 */
     private fun findDevDataDir(): File? {

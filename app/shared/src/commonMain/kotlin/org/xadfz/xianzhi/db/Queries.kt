@@ -4,7 +4,6 @@ import org.xadfz.xianzhi.model.Article
 import org.xadfz.xianzhi.model.ArticleDetail
 import org.xadfz.xianzhi.model.Book
 import org.xadfz.xianzhi.model.Category
-import org.xadfz.xianzhi.model.DbSchema
 import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.model.SearchHit
 

@@ -60,7 +60,7 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                 Text("${settings.fontSize} sp", style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = settings.fontSize.toFloat(),
-                    onValueChange = { settings.setFontSize(it.toInt()) },
+                    onValueChange = { settings.fontSize = it.toInt() },
                     valueRange = 14f..28f,
                     steps = 13,
                 )
@@ -78,7 +78,7 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                 Text("${(settings.lineSpacing * 10).toInt() / 10f} 倍行距", style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = settings.lineSpacing,
-                    onValueChange = { settings.setLineSpacing(it) },
+                    onValueChange = { settings.lineSpacing = it },
                     valueRange = 1.2f..2.0f,
                 )
             }
@@ -90,17 +90,17 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = settings.themeMode == ThemeMode.SYSTEM,
-                        onClick = { settings.setThemeMode(ThemeMode.SYSTEM) },
+                        onClick = { settings.themeMode = ThemeMode.SYSTEM },
                         label = { Text("跟随系统") },
                     )
                     FilterChip(
                         selected = settings.themeMode == ThemeMode.LIGHT,
-                        onClick = { settings.setThemeMode(ThemeMode.LIGHT) },
+                        onClick = { settings.themeMode = ThemeMode.LIGHT },
                         label = { Text("浅色") },
                     )
                     FilterChip(
                         selected = settings.themeMode == ThemeMode.DARK,
-                        onClick = { settings.setThemeMode(ThemeMode.DARK) },
+                        onClick = { settings.themeMode = ThemeMode.DARK },
                         label = { Text("深色") },
                     )
                 }
