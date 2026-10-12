@@ -9,7 +9,7 @@ import java.io.File
  * 1. 数据根目录（-Dxianzhi.home 或 %APPDATA%\xianzhi）下已部署的 data（开发期/旧版升级）；
  * 2. 安装包/便携包内置的 resources/data（随 EXE 安装版、ZIP 便携版分发，直接只读打开，
  *    无需首次运行再复制，便携版解压即用、不向系统目录写数据）；
- * 3. 开发期工程「数据/」目录（首次开发运行时复制到数据根）。
+ * 3. 开发期本地数据工作区（仓库根 数据/，首次开发运行时复制到数据根）。
  */
 object DesktopDataDeployer {
 
@@ -79,7 +79,7 @@ object DesktopDataDeployer {
         return candidates.map { File(it) }.firstOrNull { findDb(it) != null }
     }
 
-    /** 开发期：把 db 与图片从工程数据目录复制到数据根（只补不覆盖） */
+    /** 开发期：把 db 与图片从本地数据工作区复制到数据根（只补不覆盖） */
     private fun copyFromDev(source: File, dest: File): File {
         val imgEdition = File(source, IMG_DB).isFile
         File(source, if (imgEdition) IMG_DB else TXT_DB)

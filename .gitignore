@@ -1,11 +1,6 @@
-# 大文件数据：走 GitHub Release 附件，不进 git
-数据/xianzhi.db
-数据/xianzhi_img.db
-数据/books/
-数据/配图/
-数据/缺字图/
-数据/titles.json
-数据/*.zip
+# 本地数据工作区与历史构建脚本（不进 git）
+数据/
+脚本/
 
 # 构建产物
 build/

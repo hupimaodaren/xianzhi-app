@@ -8,7 +8,8 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-// 仓库根「数据/」目录（app/../数据），含 db 与图片；CI/协作者从 Release 下载后放此
+// 本地数据工作区（仓库根 app/../数据），含 db 与图片；已从 git 移除，
+// 由本机历史构建产物提供，缺失时需从 v0.1.0 安装包或 data v1 归档中取回
 val dataDir = rootProject.projectDir.resolve("../数据")
 
 // 发布签名：密钥库与口令均为本机文件（.gitignore 排除），口令从密钥文件读取

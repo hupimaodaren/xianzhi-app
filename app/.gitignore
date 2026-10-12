@@ -8,7 +8,7 @@ local.properties
 .idea/
 *.iml
 
-# 数据资产（构建时从仓库根「数据/」复制，不进 git）
+# 数据资产（构建时由 copy 任务注入生成目录，不进 git）
 androidApp/src/main/assets/*.db
 androidApp/src/main/assets/missing_chars/
 androidApp/src/main/assets/content_images/

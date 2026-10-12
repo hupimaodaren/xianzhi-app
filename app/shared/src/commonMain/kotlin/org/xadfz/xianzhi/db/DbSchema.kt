@@ -1,6 +1,6 @@
 package org.xadfz.xianzhi.db
 
-/** 表名、字段与栏目顺序常量，与 脚本/build_app_db.py 生成的库一致。 */
+/** 表名、字段与栏目顺序常量，与数据构建期生成的库一致。 */
 object DbSchema {
     const val TABLE_BOOKS = "books"
     const val TABLE_ARTS = "arts"
