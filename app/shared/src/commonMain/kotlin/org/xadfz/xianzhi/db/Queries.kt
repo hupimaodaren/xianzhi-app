@@ -8,7 +8,7 @@ import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.model.SearchHit
 
 /**
- * 全部数据查询，SQL 见《需求与移交文档》4.2 节，SQLite 内核两端通用。
+ * 全部数据查询，SQLite 内核两端通用。
  */
 class Queries(private val db: Db) {
 

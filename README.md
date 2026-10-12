@@ -10,12 +10,12 @@
 
 ## 数据规模
 
+全库共 **81 部书、38978 篇、约 6670 万字**正文，已全部内置在安装包内。
+
 | 版本 | 主库 | 图片资源 | 说明 |
 |---|---|---|---|
 | 文字版 | `xianzhi.db`（174 MB） | 缺字图 4794 个（10.79 MB） | 主力版，体积小速度快 |
 | 带图版 | `xianzhi_img.db`（175 MB） | 缺字图 + 配图 7975 张（514 MB） | 研究版，完整呈现原书面貌 |
-
-全库共 **81 部书、38978 篇、约 6670 万字**正文。
 
 ## 功能
 
@@ -24,85 +24,57 @@
 - 检索：全库全文检索（`instr`），跳转正文并高亮关键词，搜索历史
 - 图片：`⟦img:文件名⟧` 标记解析，文字版缺字图内嵌、带图版配图撑满可放大
 
-## 数据获取
+## 下载 v0.1.0
 
-大文件（数据库、配图、缺字图）托管在 [Releases](https://github.com/hupimaodaren/xianzhi-app/releases)，不进 git 仓库。
+最新版本：<https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.1.0>
 
-```bash
-# 克隆代码
-git clone https://github.com/hupimaodaren/xianzhi-app.git
-cd xianzhi-app
+数据已全部内置，无需单独下载数据文件。
 
-# 从最新 Release 下载数据文件，解压后放入 数据/ 目录：
-#   文字版：xianzhi.db + missing_char_imgs.zip（解压为 缺字图/）
-#   带图版：xianzhi_img.db + missing_char_imgs.zip + content_images.zip（解压为 配图/）
-#   开发辅助：books.zip、titles.json
-```
+| 平台 | 纯文字版 | 完整图文版 |
+|---|---|---|
+| Android | `xianzhi-0.1.0-android-text.apk`（75.22 MB） | `xianzhi-0.1.0-android-image.apk`（589.67 MB） |
+| Windows 安装程序 | `xianzhi-0.1.0-windows-text.exe`（133.32 MB） | `xianzhi-0.1.0-windows-image.exe`（628.92 MB） |
+| Windows 便携免安装 | `xianzhi-0.1.0-windows-text-portable.zip`（133.08 MB） | `xianzhi-0.1.0-windows-image-portable.zip`（631.93 MB） |
 
-## 目录结构
-
-```
-xianzhi-app/
-├── app/                    # KMP 工程（Android + Windows 一套代码）
-│   ├── shared/             # 共享模块：数据/检索/设置/UI 全部在 commonMain
-│   │   ├── commonMain/     # 模型、SQLite 抽象、查询、⟦img⟧ 渲染、Material3 页面
-│   │   ├── androidMain/    # SQLiteDatabase / SharedPreferences / assets 部署
-│   │   └── desktopMain/    # sqlite-jdbc / Preferences / %APPDATA% 部署
-│   ├── androidApp/         # Android 入口（MainActivity）
-│   └── desktopApp/         # Windows 入口（Compose Desktop，jpackage 打 msi/zip）
-├── 需求与移交文档.md     # 完整需求 + KMP 技术方案 + 表结构 + SQL + 实施步骤
-├── 开发使用清单.md       # 开发所需全部内容清单
-├── 数据说明.md           # 数据文件清单与用法
-├── LICENSE               # MIT（代码部分）
-├── 数据/
-│   ├── index.json        # 栏目与书目清单（9 KB）
-│   ├── missing_char_imgs.json  # 缺字图名单
-│   ├── xianzhi.db        # ⚠️ 从 Release 下载（不进 git）
-│   ├── xianzhi_img.db    # ⚠️ 从 Release 下载（不进 git）
-│   ├── 缺字图/            # ⚠️ 从 Release 下载 missing_char_imgs.zip 解压（不进 git）
-│   └── 配图/             # ⚠️ 从 Release 下载 content_images.zip 解压（不进 git）
-└── 脚本/
-    ├── build_data.py     # 成品库 md → books JSON
-    └── build_app_db.py   # JSON → 两版 db
-```
-
-## 构建
-
-环境要求：JDK 17（Temurin/OpenJDK）、Android SDK（platforms;android-34、build-tools;34.0.0）。
-国内网络需为 Gradle 配置代理（本机 `127.0.0.1:10808`）。
-
-先按「数据获取」下载 Release 资产，文字版放入：
-
-- `数据/xianzhi.db`
-- `数据/缺字图/`（解压 missing_char_imgs.zip）
-
-然后：
+同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
-cd app
-
-# Windows 桌面版（开发运行）
-./gradlew :desktopApp:run
-# 打包：desktopApp/build/compose/binaries/ 下产出 msi 与绿色 zip
-./gradlew :desktopApp:packageMsi :desktopApp:packageDistributionForCurrentOS
-
-# Android（构建前自动把 数据/xianzhi.db 与 缺字图/ 复制进 assets）
-./gradlew :androidApp:assembleDebug
+# Windows PowerShell
+Get-FileHash xianzhi-0.1.0-windows-text.exe -Algorithm SHA256
 ```
 
-桌面版首次运行会把数据库复制到 `%APPDATA%\xianzhi\data\`；Android 版首启从 assets 复制到 `filesDir/data/`（约 1 分钟，有进度提示）。
+> 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由 v0.1.0 安装包内置分发，该 tag 仅作历史标记保留。
 
-## 数据更新
+## 安装与使用
 
-源站新增篇目后：
+### Android
 
-```bash
-python 脚本/build_data.py
-python 脚本/build_app_db.py
-```
+1. 下载对应 APK（文字版体积小，推荐日常阅读；图文版适合研究原书面貌）
+2. 安装时需允许「未知来源」应用
+3. 首次启动会释放内置数据库到应用私有目录，约 1–2 分钟（体积约 700 MB），期间有进度提示，请勿杀后台
+4. 系统要求：Android 7.0（API 24）及以上
+
+### Windows
+
+**安装程序版（.exe）**：
+
+1. 双击运行安装程序，可选择安装路径（默认 `%LOCALAPPDATA%\Programs\xianzhi`）
+2. 因未购买代码签名证书，SmartScreen 可能提示「Windows 已保护你的电脑」，点击「更多信息」→「仍要运行」即可
+3. 安装完成后从开始菜单启动
+
+**便携免安装版（.zip）**：
+
+1. 解压到任意目录（建议英文路径）
+2. 运行 `xianzhi.exe`（文字版）或 `xianzhi-img.exe`（图文版）
+3. 不写注册表、不生成开始菜单快捷方式，删除目录即完全卸载
+4. 设置与数据存放在 `%APPDATA%\xianzhi`
+
+首次启动会释放内置数据库到用户数据目录，约 1–2 分钟，之后即可离线使用。
+
+系统要求：Windows 10/11 64 位。
 
 ## 版权声明
 
 **地方志正文及配图著作权归西安市地方志办公室及各编纂单位所有**，仅供个人学习研究使用，转载请注明出处。
 
-本仓库「软件代码」采用 [MIT](LICENSE) 协议开源；数据文件以「数据归档」形式随 Release 分发，不适用 MIT 协议。
+本仓库「软件代码」采用 [MIT](LICENSE) 协议开源；数据文件以「内置分发」形式随安装包发布，不适用 MIT 协议。
