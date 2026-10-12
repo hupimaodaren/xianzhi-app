@@ -1,0 +1,9 @@
+# Shell 脚本必须使用 LF，gradlew 在 macOS/Linux 上才能运行
+gradlew text eol=lf
+*.sh text eol=lf
+
+# 二进制资产不做换行转换
+*.jar binary
+*.db binary
+*.png binary
+*.jpg binary

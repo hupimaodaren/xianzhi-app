@@ -1,0 +1,13 @@
+# Gradle / 构建产物
+.gradle/
+build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# 数据资产（构建时从仓库根「数据/」复制，不进 git）
+androidApp/src/main/assets/*.db
+androidApp/src/main/assets/缺字图/
+androidApp/src/main/assets/配图/

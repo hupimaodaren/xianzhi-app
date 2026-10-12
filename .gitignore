@@ -17,6 +17,9 @@ build/
 .gradle/
 local.properties
 
+# 但保留 Gradle wrapper（clone 后开箱即用）
+!app/gradle/wrapper/gradle-wrapper.jar
+
 # 系统/编辑器
 .DS_Store
 Thumbs.db

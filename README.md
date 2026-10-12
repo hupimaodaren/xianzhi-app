@@ -43,6 +43,13 @@ cd xianzhi-app
 
 ```
 xianzhi-app/
+├── app/                    # KMP 工程（Android + Windows 一套代码）
+│   ├── shared/             # 共享模块：数据/检索/设置/UI 全部在 commonMain
+│   │   ├── commonMain/     # 模型、SQLite 抽象、查询、⟦img⟧ 渲染、Material3 页面
+│   │   ├── androidMain/    # SQLiteDatabase / SharedPreferences / assets 部署
+│   │   └── desktopMain/    # sqlite-jdbc / Preferences / %APPDATA% 部署
+│   ├── androidApp/         # Android 入口（MainActivity）
+│   └── desktopApp/         # Windows 入口（Compose Desktop，jpackage 打 msi/zip）
 ├── 需求与移交文档.md     # 完整需求 + KMP 技术方案 + 表结构 + SQL + 实施步骤
 ├── 开发使用清单.md       # 开发所需全部内容清单
 ├── 数据说明.md           # 数据文件清单与用法
@@ -58,6 +65,32 @@ xianzhi-app/
     ├── build_data.py     # 成品库 md → books JSON
     └── build_app_db.py   # JSON → 两版 db
 ```
+
+## 构建
+
+环境要求：JDK 17（Temurin/OpenJDK）、Android SDK（platforms;android-34、build-tools;34.0.0）。
+国内网络需为 Gradle 配置代理（本机 `127.0.0.1:10808`）。
+
+先按「数据获取」下载 Release 资产，文字版放入：
+
+- `数据/xianzhi.db`
+- `数据/缺字图/`（解压 missing_char_imgs.zip）
+
+然后：
+
+```bash
+cd app
+
+# Windows 桌面版（开发运行）
+./gradlew :desktopApp:run
+# 打包：desktopApp/build/compose/binaries/ 下产出 msi 与绿色 zip
+./gradlew :desktopApp:packageMsi :desktopApp:packageDistributionForCurrentOS
+
+# Android（构建前自动把 数据/xianzhi.db 与 缺字图/ 复制进 assets）
+./gradlew :androidApp:assembleDebug
+```
+
+桌面版首次运行会把数据库复制到 `%APPDATA%\xianzhi\data\`；Android 版首启从 assets 复制到 `filesDir/data/`（约 1 分钟，有进度提示）。
 
 ## 数据更新
 
