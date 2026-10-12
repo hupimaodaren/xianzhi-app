@@ -3,24 +3,31 @@ package org.xadfz.xianzhi.ui.screens
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,14 +36,19 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withContext
 import org.xadfz.xianzhi.data.AppContainer
@@ -45,6 +57,7 @@ import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.settings.SettingsKeys
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.RichBody
+import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,44 +100,31 @@ fun ReaderScreen(
                     )
                 },
                 navigationIcon = { BackButton(onBack) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
             )
         },
         bottomBar = {
-            if (data != null) {
-                HorizontalDivider()
-                Row(Modifier.fillMaxWidth()) {
-                    val prev = data!!.prev
-                    val next = data!!.next
-                    ReaderNavButton(
-                        enabled = prev != null,
-                        icon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null) },
-                        label = prev?.title ?: "已是第一篇",
-                        onClick = { prev?.let { onOpenArticle(it.id) } },
-                        modifier = Modifier.weight(1f),
-                    )
-                    ReaderNavButton(
-                        enabled = next != null,
-                        icon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-                        label = next?.title ?: "已是最后一篇",
-                        onClick = { next?.let { onOpenArticle(it.id) } },
-                        modifier = Modifier.weight(1f),
-                        end = true,
-                    )
-                }
+            data?.let { d ->
+                ChapterNavBar(
+                    prevTitle = d.prev?.title,
+                    nextTitle = d.next?.title,
+                    onPrev = { d.prev?.let { onOpenArticle(it.id) } },
+                    onNext = { d.next?.let { onOpenArticle(it.id) } },
+                )
             }
         },
     ) { padding ->
         val d = data
         if (d == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
             return@Scaffold
         }
 
-        val listState = remember(articleId) {
-            androidx.compose.foundation.lazy.LazyListState(0, 0)
-        }
+        val listState: LazyListState = remember(articleId) { LazyListState(0, 0) }
         // 恢复阅读位置
         LaunchedEffect(articleId) {
             val idx = container.settings.getInt(SettingsKeys.readerIndex(articleId), 0)
@@ -147,30 +147,33 @@ fun ReaderScreen(
         val focusRequester = remember { FocusRequester() }
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .focusRequester(focusRequester)
-                .focusable()
-                .onKeyEvent { e ->
-                    if (e.type == KeyEventType.KeyUp) {
-                        when (e.key) {
-                            Key.DirectionLeft -> {
-                                d.prev?.let { onOpenArticle(it.id) }; true
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+            val hp = comfortableSidePadding(maxContent = 760.dp, min = 20.dp)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onKeyEvent { e ->
+                        if (e.type == KeyEventType.KeyUp) {
+                            when (e.key) {
+                                Key.DirectionLeft -> {
+                                    d.prev?.let { onOpenArticle(it.id) }; true
+                                }
+                                Key.DirectionRight -> {
+                                    d.next?.let { onOpenArticle(it.id) }; true
+                                }
+                                else -> false
                             }
-                            Key.DirectionRight -> {
-                                d.next?.let { onOpenArticle(it.id) }; true
-                            }
-                            else -> false
+                        } else {
+                            false
                         }
-                    } else false
-                },
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp,
-            ),
-        ) {
+                    },
+                contentPadding = PaddingValues(
+                    start = hp, end = hp, top = 10.dp, bottom = 36.dp,
+                ),
+            ) {
             item(key = "header-${d.detail.id}") {
                 Text(
                     d.detail.title,
@@ -180,15 +183,27 @@ fun ReaderScreen(
                 val meta = listOfNotNull(
                     d.detail.vol.ifBlank { null },
                     d.detail.date.ifBlank { null },
-                ).joinToString(" · ")
+                ).joinToString("  ·  ")
                 if (meta.isNotBlank()) {
                     Text(
                         meta,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 14.dp),
                     )
+                } else {
+                    Spacer(Modifier.height(10.dp))
                 }
+                // 标题下朱砂短分隔，典籍页眉感
+                val accent = MaterialTheme.colorScheme.primary
+                Box(
+                    Modifier
+                        .padding(bottom = 16.dp)
+                        .size(width = 42.dp, height = 3.dp)
+                        .drawBehind {
+                            drawRect(color = accent)
+                        },
+                )
             }
             item(key = "body-${d.detail.id}") {
                 RichBody(
@@ -199,38 +214,126 @@ fun ReaderScreen(
                     keyword = highlight,
                 )
             }
+            }
+        }
+    }
+}
+
+/** 阅读页底部：上一篇 / 下一篇，整块大触控区；底栏下方还有全局常驻导航栏 */
+@Composable
+private fun ChapterNavBar(
+    prevTitle: String?,
+    nextTitle: String?,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+) {
+    val hairline = MaterialTheme.colorScheme.outlineVariant
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawRect(
+                    color = hairline,
+                    topLeft = Offset(0f, 0f),
+                    size = Size(size.width, 1f),
+                )
+            },
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+    ) {
+        Row(Modifier.fillMaxWidth().height(60.dp)) {
+            ChapterNavItem(
+                direction = "上一篇",
+                title = prevTitle ?: "已是第一篇",
+                enabled = prevTitle != null,
+                onClick = onPrev,
+                alignEnd = false,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                Modifier
+                    .width(1.dp)
+                    .height(28.dp)
+                    .align(Alignment.CenterVertically)
+                    .drawBehind { drawRect(hairline) },
+            )
+            ChapterNavItem(
+                direction = "下一篇",
+                title = nextTitle ?: "已是最后一篇",
+                enabled = nextTitle != null,
+                onClick = onNext,
+                alignEnd = true,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
 @Composable
-private fun ReaderNavButton(
+private fun ChapterNavItem(
+    direction: String,
+    title: String,
     enabled: Boolean,
-    icon: @Composable () -> Unit,
-    label: String,
     onClick: () -> Unit,
+    alignEnd: Boolean,
     modifier: Modifier = Modifier,
-    end: Boolean = false,
 ) {
-    Row(
-        modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = if (end) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onClick, enabled = enabled) {
-            if (!end) icon()
-        }
-        Text(
-            label,
-            maxLines = 1,
-            style = MaterialTheme.typography.bodySmall,
+    val content = @Composable {
+        Row(
             modifier = Modifier
-                .weight(1f, fill = false)
-                .padding(horizontal = 4.dp),
-        )
-        IconButton(onClick = onClick, enabled = enabled) {
-            if (end) icon()
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (alignEnd) Arrangement.End else Arrangement.Start,
+        ) {
+            if (!alignEnd) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = if (enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outline,
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Column(horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start) {
+                Text(
+                    direction,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 1.dp),
+                )
+            }
+            if (alignEnd) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = if (enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outline,
+                )
+            }
         }
+    }
+    if (enabled) {
+        Surface(
+            onClick = onClick,
+            enabled = true,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = modifier,
+        ) { content() }
+    } else {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            modifier = modifier,
+        ) { content() }
     }
 }

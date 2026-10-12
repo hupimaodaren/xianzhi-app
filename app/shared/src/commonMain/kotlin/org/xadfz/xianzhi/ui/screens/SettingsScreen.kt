@@ -1,5 +1,7 @@
 package org.xadfz.xianzhi.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,13 +13,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -30,6 +36,7 @@ import kotlinx.coroutines.withContext
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.ThemeMode
+import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 import org.xadfz.xianzhi.util.platformName
 
@@ -46,15 +53,23 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("设置") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("设置") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
+            )
+        },
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-        ) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+            val side = comfortableSidePadding(maxContent = 760.dp)
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = side, end = side, top = 4.dp, bottom = 24.dp),
+            ) {
             // 字号（14–28sp，默认 16）
             SettingCard("正文字号") {
                 Text("${settings.fontSize} sp", style = MaterialTheme.typography.bodyMedium)
@@ -128,6 +143,7 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                 )
             }
         }
+        }
     }
 }
 
@@ -135,11 +151,19 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
 private fun SettingCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
+        Column(Modifier.padding(18.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(10.dp))
             content()
         }
     }

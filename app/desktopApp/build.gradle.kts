@@ -53,6 +53,10 @@ tasks.matching { it.name == "run" }.configureEach {
         (this as? JavaExec)?.jvmArgs(
             "-Dskiko.cache.dir=$skikoCachePath",
             "-Dxianzhi.home=$runDataPath",
+            // 开发机若使用非 JBR 的通用 JDK 且系统缩放为 125%，AWT 窗口尺寸不会按 DPI 放大，
+            // 导致 Compose 内容（按 density 放大）溢出窗口。开发期固定 UI 缩放为 1 以便验证；
+            // 正式打包随 Compose 使用 JBR，本身 HiDPI 处理正确，不受此参数影响。
+            "-Dsun.java2d.uiScale=1.0",
         )
     }
 }
