@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="西安地方志"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Xianzhi">
 

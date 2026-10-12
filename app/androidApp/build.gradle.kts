@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.file.DirectoryProperty
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,22 +11,31 @@ plugins {
 // 仓库根「数据/」目录（app/../数据），含 db 与图片；CI/协作者从 Release 下载后放此
 val dataDir = rootProject.projectDir.resolve("../数据")
 
-// 构建前把文字版数据复制进 assets（存在才复制，db 不进 git）
-val copyDbToAssets = tasks.register<Copy>("copyDbToAssets") {
+// 发布签名：密钥库与口令均为本机文件（.gitignore 排除），口令从密钥文件读取
+val keystoreFile = rootProject.projectDir.resolve("androidApp/release.keystore")
+val keystorePwFile = rootProject.projectDir.resolve("androidApp/.keystore.pw")
+
+/** 把对应版本的 db/图片同步到生成资产目录（Variant API 声明为生成源，依赖自动串联） */
+abstract class EditionAssetsCopy : Copy() {
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+}
+
+// text  -> xianzhi.db + missing_chars
+val copyTextEditionAssets = tasks.register<EditionAssetsCopy>("copyTextEditionAssets") {
+    outputDir.set(layout.buildDirectory.dir("dataAssets/text"))
+    destinationDir = outputDir.get().asFile
     from(dataDir.resolve("xianzhi.db"))
-    into(layout.projectDirectory.dir("src/main/assets"))
-    onlyIf { dataDir.resolve("xianzhi.db").exists() }
+    from(dataDir.resolve("缺字图")) { into("missing_chars") }
 }
 
-val copyMissingCharsToAssets = tasks.register<Copy>("copyMissingCharsToAssets") {
-    // assets 目录必须 ASCII：aapt2 在部分系统上对非 ASCII 路径有编码问题
-    from(dataDir.resolve("缺字图"))
-    into(layout.projectDirectory.dir("src/main/assets/missing_chars"))
-    onlyIf { dataDir.resolve("缺字图").isDirectory }
-}
-
-tasks.matching { it.name == "preBuild" }.configureEach {
-    dependsOn(copyDbToAssets, copyMissingCharsToAssets)
+// image -> xianzhi_img.db + missing_chars + content_images
+val copyImageEditionAssets = tasks.register<EditionAssetsCopy>("copyImageEditionAssets") {
+    outputDir.set(layout.buildDirectory.dir("dataAssets/image"))
+    destinationDir = outputDir.get().asFile
+    from(dataDir.resolve("xianzhi_img.db"))
+    from(dataDir.resolve("缺字图")) { into("missing_chars") }
+    from(dataDir.resolve("配图")) { into("content_images") }
 }
 
 android {
@@ -38,9 +50,39 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        if (keystoreFile.exists() && keystorePwFile.exists()) {
+            create("release") {
+                storeFile = keystoreFile
+                val pw = keystorePwFile.readText().trim()
+                storePassword = pw
+                keyAlias = "xianzhi"
+                keyPassword = pw
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            val releaseCfg = signingConfigs.findByName("release")
+            if (releaseCfg != null && releaseCfg.storeFile?.exists() == true) {
+                signingConfig = releaseCfg
+            }
+        }
+    }
+
+    flavorDimensions += "edition"
+    productFlavors {
+        create("text") {
+            dimension = "edition"
+            resValue("string", "app_name", "西安地方志")
+        }
+        create("image") {
+            dimension = "edition"
+            // 独立 applicationId，可与文字版并存；桌面图标名区分
+            applicationIdSuffix = ".image"
+            resValue("string", "app_name", "西安地方志（图文版）")
         }
     }
 
@@ -55,6 +97,29 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+}
+
+// 通过 Variant API 把数据目录注册为静态 assets 源（路径在 merge 前由对应版本
+// 的 copy 任务经 pre<Variant>Build 保证就绪），所有消费任务均能正确看到
+androidComponents {
+    onVariants { variant ->
+        val cap = variant.name.replaceFirstChar { it.uppercase() }
+        val assetsDir = when {
+            variant.name.startsWith("text") -> copyTextEditionAssets
+            variant.name.startsWith("image") -> copyImageEditionAssets
+            else -> null
+        }
+        if (assetsDir != null) {
+            val preName = "pre${cap}Build"
+            tasks.configureEach {
+                if (name == preName) dependsOn(assetsDir)
+            }
+            variant.sources.assets?.addStaticSourceDirectory(
+                assetsDir.get().outputDir.get().asFile
+                    .relativeTo(project.projectDir).invariantSeparatorsPath,
+            )
+        }
     }
 }
 

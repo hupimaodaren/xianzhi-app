@@ -1,46 +1,41 @@
 package org.xadfz.xianzhi.data
 
+import org.xadfz.xianzhi.settings.DesktopPaths
 import org.xadfz.xianzhi.settings.createSettingsStore
 import java.io.File
 
 /**
- * 桌面数据部署：数据目录 %APPDATA%\xianzhi\data。
- * 首次运行时从工程「数据/」目录（开发期）或安装包资源目录复制 db 与图片，之后只读打开。
+ * 桌面数据部署，三种数据来源，按优先级：
+ * 1. 数据根目录（-Dxianzhi.home 或 %APPDATA%\xianzhi）下已部署的 data（开发期/旧版升级）；
+ * 2. 安装包/便携包内置的 resources/data（随 EXE 安装版、ZIP 便携版分发，直接只读打开，
+ *    无需首次运行再复制，便携版解压即用、不向系统目录写数据）；
+ * 3. 开发期工程「数据/」目录（首次开发运行时复制到数据根）。
  */
 object DesktopDataDeployer {
 
     fun ensureData(): AppContainer {
-        // 可用 -Dxianzhi.home=... 覆盖数据根目录（开发期/便携版场景）；默认 %APPDATA%\xianzhi
-        val override = System.getProperty("xianzhi.home")
-        val appRoot = override?.let { File(it) }
-            ?: File(System.getenv("APPDATA") ?: System.getProperty("user.home"), "xianzhi")
-        val dataDir = File(appRoot, "data").apply { mkdirs() }
+        val dataHome = File(DesktopPaths.home(), "data").apply { mkdirs() }
+        val packed = findPackedDataDir()
+        val devSource = findDevDataDir()
 
-        val source = findDevDataDir()
+        // 选定数据根：home 已部署 > 包内资源 > 开发期复制
+        val dataRoot: File = when {
+            findDb(dataHome) != null -> dataHome
+            packed != null -> packed
+            devSource != null -> copyFromDev(devSource, dataHome)
+            else -> null
+        } ?: error(
+            "未找到数据库。请将 xianzhi.db（或带图版 xianzhi_img.db）放到 $dataHome，" +
+                "或使用包含数据的正式分发包。",
+        )
 
-        val imageEdition = source?.let { File(it, "xianzhi_img.db").exists() } ?: false
-        val dbName = if (imageEdition) "xianzhi_img.db" else "xianzhi.db"
-        val dbFile = File(dataDir, dbName)
-        if (!dbFile.exists()) {
-            val srcDb = source?.let { File(it, dbName) }
-            require(srcDb != null && srcDb.exists()) {
-                "未找到 $dbName。请将数据库放到 $dataDir（见仓库 README「数据获取」）。"
-            }
-            srcDb.copyTo(dbFile)
-        }
+        val imageEdition = File(dataRoot, IMG_DB).isFile
+        val dbName = if (imageEdition) IMG_DB else TXT_DB
+        val dbFile = File(dataRoot, dbName)
+        check(dbFile.isFile) { "数据库缺失：$dbFile" }
 
-        val missingDir = File(dataDir, DIR_MISSING)
-        if (!missingDir.exists()) {
-            source?.let { copyDirPreserving(File(it, SRC_DIR_MISSING), missingDir) }
-        }
-
-        var contentDir: File? = null
-        if (imageEdition) {
-            contentDir = File(dataDir, DIR_CONTENT)
-            if (!contentDir.exists()) {
-                source?.let { copyDirPreserving(File(it, SRC_DIR_CONTENT), contentDir) }
-            }
-        }
+        val missingDir = File(dataRoot, DIR_MISSING)
+        val contentDir = if (imageEdition) File(dataRoot, DIR_CONTENT) else null
 
         return AppContainer(
             dbPath = dbFile.absolutePath,
@@ -50,19 +45,52 @@ object DesktopDataDeployer {
         )
     }
 
-    // 部署目标统一 ASCII 名（与 Android 端一致）；源目录是仓库「数据/」下的中文名
-    private const val SRC_DIR_MISSING = "缺字图"
-    private const val SRC_DIR_CONTENT = "配图"
+    private const val TXT_DB = "xianzhi.db"
+    private const val IMG_DB = "xianzhi_img.db"
     private const val DIR_MISSING = "missing_chars"
     private const val DIR_CONTENT = "content_images"
+
+    private const val SRC_DIR_MISSING = "缺字图"
+    private const val SRC_DIR_CONTENT = "配图"
+
+    private fun findDb(dir: File): File? =
+        File(dir, IMG_DB).takeIf { it.isFile } ?: File(dir, TXT_DB).takeIf { it.isFile }
+
+    /** 包内资源：Compose/jpackage 约定的 resources 目录及可执行文件周边候选 */
+    private fun findPackedDataDir(): File? {
+        val candidates = mutableListOf<File>()
+        System.getProperty("compose.application.resources.dir")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { candidates += File(it, "data") }
+        System.getProperty("jpackage.app-path")
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                val exeDir = File(it).parentFile
+                candidates += File(exeDir, "app/resources/data")
+                candidates += File(exeDir, "resources/data")
+                candidates += File(exeDir, "data")
+            }
+        return candidates.firstOrNull { findDb(it) != null }
+    }
 
     /** 开发期候选：desktopApp 运行工作目录为 app/desktopApp，仓库根在两级之上 */
     private fun findDevDataDir(): File? {
         val candidates = listOf("../../数据", "../数据", "数据", "../../../数据")
-        return candidates.map { File(it) }.firstOrNull { File(it, "xianzhi.db").exists() }
+        return candidates.map { File(it) }.firstOrNull { findDb(it) != null }
     }
 
-    /** 仅复制目标目录中尚不存在的文件（断点补齐，不覆盖已有数据） */
+    /** 开发期：把 db 与图片从工程数据目录复制到数据根（只补不覆盖） */
+    private fun copyFromDev(source: File, dest: File): File {
+        val imgEdition = File(source, IMG_DB).isFile
+        File(source, if (imgEdition) IMG_DB else TXT_DB)
+            .let { src -> File(dest, src.name).also { if (!it.exists()) src.copyTo(it) } }
+        copyDirPreserving(File(source, SRC_DIR_MISSING), File(dest, DIR_MISSING))
+        if (imgEdition) {
+            copyDirPreserving(File(source, SRC_DIR_CONTENT), File(dest, DIR_CONTENT))
+        }
+        return dest
+    }
+
     private fun copyDirPreserving(src: File, dest: File) {
         if (!src.isDirectory) return
         dest.mkdirs()

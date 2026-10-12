@@ -26,17 +26,30 @@ compose.desktop {
         mainClass = "org.xadfz.xianzhi.desktop.MainKt"
 
         nativeDistributions {
-            // msi 安装包；绿色 zip 由 packageDistributionForCurrentOS 任务自动产出
-            targetFormats(TargetFormat.Msi)
-            packageName = "xianzhi"
+            // EXE 安装程序（Inno Setup，dirChooser 允许自选安装路径）+ AppImage 目录
+            // （便携免安装 zip 由发布脚本对 app-image 目录直接打包）
+            targetFormats(TargetFormat.Exe, TargetFormat.AppImage)
+            // -PwinEdition=image 打图文版（独立产品，可与文字版并存）；默认文字版
+            val edition = (project.findProperty("winEdition") as String?) ?: "text"
+            packageName = if (edition == "image") "xianzhi-img" else "xianzhi"
             packageVersion = "0.1.0"
-            description = "西安地方志"
-            vendor = "西安地名协会"
+            // 注意：jpackage 参数文件按平台 ANSI 编码读取，中文 vendor/menuGroup 会报
+            // “Input length = 1”；打包元数据保持 ASCII（应用窗口标题仍为中文，不受影响）
+            description = "Xian Local Chronicles"
+            vendor = "Xian Place Names Association"
+            // 内置数据（db/缺字图/配图）：打包前由发布脚本按版本放入 build/app-resources/data
+            appResourcesRootDir.set(layout.buildDirectory.dir("app-resources"))
+            // sqlite-jdbc 为非模块 jar，jdeps 无法自动识别其 JDK 模块依赖，显式补齐
+            modules("java.sql", "java.naming", "java.management", "jdk.unsupported")
             windows {
                 dirChooser = true
-                menuGroup = "西安地方志"
-                // 无代码签名：msi 首次运行会有 SmartScreen 提示，过渡期可用 zip 绿色版
+                menuGroup = "Xianzhi"
+                // 无代码签名：首次运行会有 SmartScreen 提示
             }
+        }
+        buildTypes.release {
+            // 桌面本地分发，无需 ProGuard 混淆裁剪；关闭以保证 sqlite-jdbc/skiko 反射正常
+            proguard { isEnabled = false }
         }
     }
 }
