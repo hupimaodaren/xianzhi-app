@@ -33,9 +33,10 @@
 git clone https://github.com/hupimaodaren/xianzhi-app.git
 cd xianzhi-app
 
-# 下载数据（从最新 Release 下载 xianzhi.db 与缺字图，放入 数据/ 目录）
-# 文字版：xianzhi.db + 缺字图/
-# 带图版：xianzhi_img.db + 缺字图/ + 配图/
+# 从最新 Release 下载数据文件，解压后放入 数据/ 目录：
+#   文字版：xianzhi.db + missing_char_imgs.zip（解压为 缺字图/）
+#   带图版：xianzhi_img.db + missing_char_imgs.zip + content_images.zip（解压为 配图/）
+#   开发辅助：books.zip、titles.json
 ```
 
 ## 目录结构
@@ -51,8 +52,8 @@ xianzhi-app/
 │   ├── missing_char_imgs.json  # 缺字图名单
 │   ├── xianzhi.db        # ⚠️ 从 Release 下载（不进 git）
 │   ├── xianzhi_img.db    # ⚠️ 从 Release 下载（不进 git）
-│   ├── 缺字图/            # ⚠️ 从 Release 下载（不进 git）
-│   └── 配图/             # ⚠️ 从 Release 下载（不进 git）
+│   ├── 缺字图/            # ⚠️ 从 Release 下载 missing_char_imgs.zip 解压（不进 git）
+│   └── 配图/             # ⚠️ 从 Release 下载 content_images.zip 解压（不进 git）
 └── 脚本/
     ├── build_data.py     # 成品库 md → books JSON
     └── build_app_db.py   # JSON → 两版 db
