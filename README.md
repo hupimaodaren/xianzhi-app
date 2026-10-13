@@ -21,31 +21,38 @@
 
 - **浏览**：栏目 → 书目 → 多级篇目目录树 → 阅读；目录树支持任意层级展开/收起、一键全部展开、记忆展开状态
 - **阅读**：字号无级调节（14–28sp）、行距、浅色/深色主题、阅读位置记忆、上一篇/下一篇
-- **检索**：全库全文检索，每页 50 条、最多返回前 500 条；每条结果展示命中词前后各两行上下文；点击进入阅读页自动定位并高亮关键词；返回自动还原至原结果位置
+- **检索**：全库全文检索，每页 50 条；命中超过提醒阈值（默认 500 条，可自定义）时询问是否继续并显示检索进度，达到上限（默认 2000 条，可自定义）自动停止；分页条支持页码直接跳转；点击进入阅读页自动定位并高亮关键词；返回自动还原至原结果位置
 - **收藏**：阅读时一键收藏篇目，自定义合集分组管理；支持新建/重命名/删除合集、按合集筛选浏览、在收藏对话框内一步新建合集
 - **图片**：`⟦img:文件名⟧` 标记解析，文字版缺字图内嵌、带图版配图撑满可放大
-- **设置**：字号行距主题、关于页（含 GitHub 官方发布与反馈渠道）
+- **设置**：字号行距主题、检索阈值（提醒/上限条数）、关于页（含 GitHub 官方发布与反馈渠道）
 
 ## 下载
 
-最新版本：[**v0.3.0**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.3.0)
+最新版本：[**v0.3.1**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.3.1)
 
 数据已全部内置，无需单独下载数据文件。
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-0.3.0-android-text.apk`（约 76 MB） | `xianzhi-0.3.0-android-image.apk`（约 590 MB） |
-| Windows 安装程序 | `xianzhi-0.3.0-windows-text.exe`（约 134 MB） | `xianzhi-0.3.0-windows-image.exe`（约 629 MB） |
-| Windows 便携免安装 | `xianzhi-0.3.0-windows-text-portable.zip`（约 134 MB） | `xianzhi-0.3.0-windows-image-portable.zip`（约 632 MB） |
+| Android | `xianzhi-0.3.1-android-text.apk`（约 80 MB） | `xianzhi-0.3.1-android-image.apk`（约 594 MB） |
+| Windows 安装程序 | `xianzhi-0.3.1-windows-text.exe`（约 168 MB） | `xianzhi-0.3.1-windows-image.exe`（约 664 MB） |
+| Windows 便携免安装 | `xianzhi-0.3.1-windows-text-portable.zip`（约 168 MB） | `xianzhi-0.3.1-windows-image-portable.zip`（约 666 MB） |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
 # Windows PowerShell
-Get-FileHash xianzhi-0.3.0-windows-text.exe -Algorithm SHA256
+Get-FileHash xianzhi-0.3.1-windows-text.exe -Algorithm SHA256
 ```
 
 > 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由安装包内置分发，该 tag 仅作历史标记保留。
+
+### v0.3.1 主要更新（检索功能专项升级）
+
+1. **阈值分级检索**：单次搜索命中超过提醒阈值（默认 500 条）时暂停并询问「继续搜索 / 取消搜索」，继续后分批检索并实时显示进度；达到上限（默认 2000 条）自动停止并告知，取消则展示已检索到的前 500 条。
+2. **阈值可自定义**：设置页新增「检索阈值」配置（提醒 100–5000 / 上限 500–20000），修改即时生效、自动保存、重启保留。
+3. **页码直接跳转**：检索结果分页条新增「跳至第 X 页」，仅允许数字输入，超出范围自动标红并禁用跳转。
+4. **关键词定位修复**：搜索结果片段中超长命中行围绕关键词截取窗口、关键词始终居中；修复偶发的进入正文后未滚动到命中段落的问题。
 
 ### v0.3.0 主要更新
 
