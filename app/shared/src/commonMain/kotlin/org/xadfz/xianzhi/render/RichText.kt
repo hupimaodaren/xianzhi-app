@@ -42,3 +42,6 @@ fun soleImage(paragraph: String): String? {
     val m = IMG_MARKER.matchEntire(trimmed) ?: return null
     return m.groupValues[1]
 }
+
+/** 去掉图片标记后的纯文本（检索定位用） */
+fun plainText(raw: String): String = IMG_MARKER.replace(raw, "")

@@ -10,3 +10,6 @@ expect fun fileExists(path: String): Boolean
 
 /** 运行平台名（关于页显示） */
 expect val platformName: String
+
+/** 用系统默认浏览器打开网址（关于页的 GitHub 官方渠道链接） */
+expect fun openUrl(url: String)

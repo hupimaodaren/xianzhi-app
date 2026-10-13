@@ -32,19 +32,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withContext
+import org.xadfz.xianzhi.AppInfo
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.model.Article
 import org.xadfz.xianzhi.model.Category
+import org.xadfz.xianzhi.model.TocExpansionMemory
+import org.xadfz.xianzhi.model.TocGroup
+import org.xadfz.xianzhi.model.TocLeaf
+import org.xadfz.xianzhi.model.allGroupKeys
+import org.xadfz.xianzhi.model.buildToc
+import org.xadfz.xianzhi.model.flattenToc
 import org.xadfz.xianzhi.ui.AppNavigator
 import org.xadfz.xianzhi.ui.Route
 import org.xadfz.xianzhi.ui.comfortableSidePadding
@@ -104,7 +115,7 @@ fun BrandTitle() {
         Spacer(Modifier.width(10.dp))
         Column {
             Text(
-                "西安地方志",
+                AppInfo.APP_NAME,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -271,12 +282,33 @@ private fun ArticleListScreen(
     val articles by produceState<List<Article>?>(null, bookId) {
         value = withContext(ioDispatcher) { container.queries.articlesOfBook(bookId) }
     }
+    // 目录与展开状态需同时供顶栏「全展开/全收起」与内容列表使用，提升到 Scaffold 之外
+    val toc = remember(articles) { articles?.let { buildToc(it) } }
+    val allKeys = remember(toc) { toc?.let { allGroupKeys(it) } ?: emptySet() }
+    var expanded by remember(bookId, toc) {
+        mutableStateOf(toc?.let { TocExpansionMemory.load(bookId, it) } ?: emptySet())
+    }
+    fun updateExpanded(keys: Set<String>) {
+        expanded = keys
+        TocExpansionMemory.save(bookId, keys)
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text(bookTitle, maxLines = 1) },
                 navigationIcon = { BackButton(onBack) },
+                actions = {
+                    // 多级目录：任意层级一键全部展开 / 全部收起
+                    TextButton(
+                        onClick = { updateExpanded(allKeys) },
+                        enabled = expanded.size < allKeys.size,
+                    ) { Text("全展开") }
+                    TextButton(
+                        onClick = { updateExpanded(emptySet()) },
+                        enabled = expanded.isNotEmpty(),
+                    ) { Text("全收起") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
@@ -287,46 +319,90 @@ private fun ArticleListScreen(
             LoadingBox(Modifier.padding(padding))
             return@Scaffold
         }
-        val grouped = articles!!.groupBy { it.vol.ifBlank { "" } }
+        val readyToc = toc!!
+        val flat = remember(readyToc, expanded) { flattenToc(readyToc, expanded) }
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val side = comfortableSidePadding(maxContent = 860.dp)
             LazyColumn(
                 Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = side, end = side, bottom = 12.dp),
             ) {
-                grouped.forEach { (vol, list) ->
-                    if (vol.isNotBlank()) {
-                        item(key = "vol-$vol") {
-                            Text(
-                                vol,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 6.dp),
+                items(flat, key = { it.key }) { node ->
+                    when (node) {
+                        is TocLeaf -> {
+                            val a = node.article
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onOpenArticle(a.id) }
+                                    .padding(start = (8 + (node.level - 1) * 14).dp, end = 18.dp, top = 13.dp, bottom = 13.dp),
+                            ) {
+                                Text(a.title, style = MaterialTheme.typography.bodyLarge)
+                                if (a.date.isNotBlank()) {
+                                    Text(
+                                        a.date,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 2.dp),
+                                    )
+                                }
+                            }
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                modifier = Modifier.padding(horizontal = 18.dp),
                             )
                         }
-                    }
-                    items(list, key = { it.id }) { a ->
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onOpenArticle(a.id) }
-                                .padding(horizontal = 18.dp, vertical = 13.dp),
-                        ) {
-                            Text(a.title, style = MaterialTheme.typography.bodyLarge)
-                            if (a.date.isNotBlank()) {
+                        is TocGroup -> {
+                            val open = node.key in expanded
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        updateExpanded(
+                                            if (open) expanded - node.key else expanded + node.key,
+                                        )
+                                    }
+                                    .padding(start = (8 + (node.level - 1) * 14).dp, end = 18.dp, top = 11.dp, bottom = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Text(
-                                    a.date,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    if (open) "▾" else "▸",
+                                    style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 2.dp),
                                 )
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    node.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (node.articleId != null) {
+                                    // 该层级本身也是一篇文章：标题行负责展开，箭头负责读正文
+                                    IconButton(
+                                        onClick = { onOpenArticle(node.articleId) },
+                                        modifier = Modifier.size(32.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                            contentDescription = "读本篇",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        "${node.leafCount}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                modifier = Modifier.padding(horizontal = 18.dp),
+                            )
                         }
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            modifier = Modifier.padding(horizontal = 18.dp),
-                        )
                     }
                 }
             }

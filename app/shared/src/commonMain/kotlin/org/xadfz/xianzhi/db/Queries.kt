@@ -6,15 +6,16 @@ import org.xadfz.xianzhi.model.Book
 import org.xadfz.xianzhi.model.Category
 import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.model.SearchHit
+import org.xadfz.xianzhi.search.SearchSnippet
 
 /**
  * 全部数据查询，SQLite 内核两端通用。
  */
 class Queries(private val db: Db) {
 
-    /** 首页六栏目（含栏目下书目，按 books.id 排序） */
+    /** 首页六栏目（含栏目下书目，按 seq 排序保证中文卷序正确） */
     fun categories(): List<Category> {
-        val rows = db.query("SELECT cat, id, title, n FROM books ORDER BY id")
+        val rows = db.query("SELECT cat, id, title, n FROM books ORDER BY seq, id")
         val byCat = LinkedHashMap<String, MutableList<Book>>()
         for (r in rows) {
             val cat = r.getString(0).orEmpty()
@@ -30,7 +31,7 @@ class Queries(private val db: Db) {
     /** 某书目的篇目列表（不取 body，快） */
     fun articlesOfBook(bookId: String): List<Article> =
         db.query(
-            "SELECT id, title, vol, date FROM arts WHERE book = ? ORDER BY id",
+            "SELECT id, title, vol, date, path FROM arts WHERE book = ? ORDER BY id",
             bookId,
         ).map {
             Article(
@@ -38,6 +39,7 @@ class Queries(private val db: Db) {
                 title = it.getString(1).orEmpty(),
                 vol = it.getString(2).orEmpty(),
                 date = it.getString(3).orEmpty(),
+                path = it.getString(4).orEmpty(),
             )
         }
 
@@ -74,13 +76,15 @@ class Queries(private val db: Db) {
     }
 
     /**
-     * 全文检索：instr 全表扫描（约 1-3 秒），标题命中优先，最多 200 条。
+     * 全文检索：instr 全表扫描（约 1-3 秒），标题命中优先。
+     * [limit] 全局最多返回前 500 条（界面按每页 [PAGE_SIZE] 条分页展示）；
+     * 每条携带命中行及其前后各 2 行上下文。
      */
-    fun search(keyword: String, limit: Int = 200): List<SearchHit> {
+    fun search(keyword: String, limit: Int = SEARCH_MAX_HITS): List<SearchHit> {
         if (keyword.isBlank()) return emptyList()
         return db.query(
             """
-            SELECT a.id, a.title, a.book, b.title AS book_title, b.cat
+            SELECT a.id, a.title, a.book, b.title AS book_title, b.cat, a.body
             FROM arts a JOIN books b ON b.id = a.book
             WHERE instr(a.body, ?) > 0 OR instr(a.title, ?) > 0
             ORDER BY (instr(a.title, ?) > 0) DESC, a.id LIMIT ?
@@ -93,8 +97,15 @@ class Queries(private val db: Db) {
                 book = it.getString(2).orEmpty(),
                 bookTitle = it.getString(3).orEmpty(),
                 cat = it.getString(4).orEmpty(),
+                snippet = SearchSnippet.build(it.getString(5).orEmpty(), keyword),
             )
         }
+    }
+
+    companion object {
+        /** 检索结果全局上限与默认分页大小 */
+        const val SEARCH_MAX_HITS = 500
+        const val SEARCH_PAGE_SIZE = 50
     }
 
     /** 命中篇目数（检索框输入时的预览） */

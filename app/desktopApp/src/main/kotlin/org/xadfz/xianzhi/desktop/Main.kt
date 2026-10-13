@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -27,6 +28,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.xadfz.xianzhi.AppInfo
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.data.DesktopDataDeployer
 import org.xadfz.xianzhi.ui.XianzhiApp
@@ -47,12 +49,15 @@ fun main() = application {
     val startArticle = articleArg?.toLongOrNull()
     val catArg = System.getenv("XIANZHI_CAT")
     val bookArg = System.getenv("XIANZHI_BOOK")
+    val highlightArg = System.getenv("XIANZHI_HIGHLIGHT")
+    val queryArg = System.getenv("XIANZHI_QUERY").orEmpty()
     val winW = System.getenv("XIANZHI_WIDTH")?.toIntOrNull() ?: 1024
     val winH = System.getenv("XIANZHI_HEIGHT")?.toIntOrNull() ?: 768
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "西安地方志",
+        title = AppInfo.APP_NAME,
+        icon = painterResource("icon.png"),
         state = rememberWindowState(size = DpSize(winW.dp, winH.dp)),
     ) {
         val ready = container
@@ -68,6 +73,14 @@ fun main() = application {
                 }.getOrNull()
                 val firstCat = firstCategory?.name
                 val firstBook = firstCategory?.books?.firstOrNull()
+                val startBook = if (bookArg != null && bookArg != "first") {
+                    runCatching {
+                        ready.queries.categories()
+                            .firstNotNullOfOrNull { c -> c.books.firstOrNull { b -> b.id == bookArg } }
+                    }.getOrNull()
+                } else {
+                    firstBook
+                }
                 val effectiveArticle = startArticle ?: if (articleArg == "first") {
                     runCatching {
                         ready.queries.categories()
@@ -86,7 +99,9 @@ fun main() = application {
                     initialArticleId = effectiveArticle,
                     initialCat = catArg?.let { if (it == "first") firstCat else it },
                     initialBookId = bookArg?.let { if (it == "first") firstBook?.id else it },
-                    initialBookTitle = if (bookArg != null) firstBook?.title.orEmpty() else "",
+                    initialBookTitle = if (bookArg != null) startBook?.title.orEmpty() else "",
+                    initialHighlight = highlightArg,
+                    initialQuery = queryArg,
                 )
             } else {
             MaterialTheme {
@@ -97,7 +112,7 @@ fun main() = application {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         if (error == null) {
-                            Text("西安地方志", fontSize = 22.sp)
+                            Text(AppInfo.APP_NAME, fontSize = 22.sp)
                             CircularProgressIndicator(Modifier.padding(top = 16.dp))
                             Text("正在准备数据…", fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
                         } else {

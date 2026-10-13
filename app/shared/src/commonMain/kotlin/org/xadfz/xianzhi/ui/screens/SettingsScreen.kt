@@ -1,6 +1,7 @@
 package org.xadfz.xianzhi.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,11 +34,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.withContext
+import org.xadfz.xianzhi.AppInfo
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.ThemeMode
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
+import org.xadfz.xianzhi.util.openUrl
 import org.xadfz.xianzhi.util.platformName
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,7 +83,7 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                     steps = 13,
                 )
                 Text(
-                    "西安地方志",
+                    AppInfo.APP_NAME,
                     fontSize = settings.fontSize.sp,
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -125,9 +128,9 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
 
             // 关于
             SettingCard("关于") {
-                Text("西安地方志", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(AppInfo.APP_NAME, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    "版本 0.1.0 · $platformName" +
+                    "版本 ${AppInfo.APP_VERSION} · $platformName" +
                         (stats?.let { " · ${it.first} 部书 / ${it.second} 篇" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -135,7 +138,30 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text("数据来源：西安市地方志办公室官网（xadfz.xa.gov.cn）「志鉴浏览」")
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
+                // GitHub：软件官方发布渠道与用户反馈接收渠道
+                Text(
+                    "项目主页（GitHub）",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    AppInfo.GITHUB_URL,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { openUrl(AppInfo.GITHUB_URL) }
+                        .padding(vertical = 4.dp),
+                )
+                Text(
+                    "该地址为本软件的官方发布渠道与用户反馈接收渠道：" +
+                        "各平台正式版本安装包均在此发布，使用中发现的问题与功能建议也可在此提交。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
                 Text(
                     "版权声明：正文及配图著作权归西安市地方志办公室及各编纂单位所有，" +
                         "仅供个人学习研究使用，转载请注明出处。软件代码以 MIT 协议开源。",

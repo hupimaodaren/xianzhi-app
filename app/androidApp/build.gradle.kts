@@ -47,8 +47,8 @@ android {
         applicationId = "org.xadfz.xianzhi"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     signingConfigs {
@@ -77,13 +77,13 @@ android {
     productFlavors {
         create("text") {
             dimension = "edition"
-            resValue("string", "app_name", "西安地方志")
+            resValue("string", "app_name", "西安志")
         }
         create("image") {
             dimension = "edition"
-            // 独立 applicationId，可与文字版并存；桌面图标名区分
+            // 独立 applicationId，可与文字版并存；应用名与文字版统一
             applicationIdSuffix = ".image"
-            resValue("string", "app_name", "西安地方志（图文版）")
+            resValue("string", "app_name", "西安志")
         }
     }
 

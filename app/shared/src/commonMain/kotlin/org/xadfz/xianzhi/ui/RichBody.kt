@@ -53,13 +53,28 @@ fun RichBody(
     val paragraphs = remember(body) { splitParagraphs(body) }
     Column(modifier = Modifier.fillMaxWidth()) {
         for (p in paragraphs) {
-            val imageOnly = soleImage(p)
-            if (imageOnly != null) {
-                BlockImage(imageOnly, container)
-            } else {
-                InlineParagraph(p, container, fontSize, lineSpacing, keyword)
-            }
+            ParagraphBlock(p, container, fontSize, lineSpacing, keyword)
         }
+    }
+}
+
+/**
+ * 单个段落（或块级配图）的渲染。阅读页把每个段落作为独立的懒列表项，
+ * 以便按段落滚动定位（检索跳入居中）。
+ */
+@Composable
+fun ParagraphBlock(
+    paragraph: String,
+    container: AppContainer,
+    fontSize: Int,
+    lineSpacing: Float,
+    keyword: String?,
+) {
+    val imageOnly = soleImage(paragraph)
+    if (imageOnly != null) {
+        BlockImage(imageOnly, container)
+    } else {
+        InlineParagraph(paragraph, container, fontSize, lineSpacing, keyword)
     }
 }
 

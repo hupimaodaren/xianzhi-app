@@ -32,7 +32,7 @@ compose.desktop {
             // -PwinEdition=image 打图文版（独立产品，可与文字版并存）；默认文字版
             val edition = (project.findProperty("winEdition") as String?) ?: "text"
             packageName = if (edition == "image") "xianzhi-img" else "xianzhi"
-            packageVersion = "0.1.0"
+            packageVersion = "0.2.0"
             // 注意：jpackage 参数文件按平台 ANSI 编码读取，中文 vendor/menuGroup 会报
             // “Input length = 1”；打包元数据保持 ASCII（应用窗口标题仍为中文，不受影响）
             description = "Xian Local Chronicles"
@@ -44,6 +44,8 @@ compose.desktop {
             windows {
                 dirChooser = true
                 menuGroup = "Xianzhi"
+                // EXE/安装包图标（运行时窗口标题栏图标在 Main.kt 用 resources/icon.png 设置）
+                iconFile.set(project.file("icons/icon.ico"))
                 // 无代码签名：首次运行会有 SmartScreen 提示
             }
         }

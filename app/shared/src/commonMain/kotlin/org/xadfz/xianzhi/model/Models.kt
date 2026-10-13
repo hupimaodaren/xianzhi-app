@@ -1,5 +1,7 @@
 package org.xadfz.xianzhi.model
 
+import org.xadfz.xianzhi.search.SearchSnippet
+
 /** 栏目下的一部书（books 表） */
 data class Book(
     val id: String,
@@ -22,7 +24,11 @@ data class Article(
     val title: String,
     val vol: String,
     val date: String,
-)
+    /** 多级目录路径，各级用 "/" 分隔；空串表示该书根下的文章 */
+    val path: String,
+) {
+    val depth: Int get() = if (path.isBlank()) 0 else path.count { it == '/' } + 1
+}
 
 /** 篇目详情（含正文） */
 data class ArticleDetail(
@@ -41,11 +47,12 @@ data class Neighbor(
     val title: String,
 )
 
-/** 全文检索命中 */
+/** 全文检索命中（[snippet] 为命中原文片段及前后各 2 行上下文） */
 data class SearchHit(
     val id: Long,
     val title: String,
     val book: String,
     val bookTitle: String,
     val cat: String,
+    val snippet: SearchSnippet?,
 )

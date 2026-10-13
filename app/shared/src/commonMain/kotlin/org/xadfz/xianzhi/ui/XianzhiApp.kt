@@ -34,13 +34,15 @@ fun XianzhiApp(
     initialCat: String? = null,
     initialBookId: String? = null,
     initialBookTitle: String = "",
+    initialHighlight: String? = null,
+    initialQuery: String = "",
 ) {
     val navigator = remember {
         AppNavigator().apply {
             if (initialTab in 1..2) goTab(initialTab)
             initialCat?.let { push(Route.BookList(it)) }
             if (initialBookId != null) push(Route.ArticleList(initialBookId, initialBookTitle))
-            initialArticleId?.let { openChapter(it) }
+            initialArticleId?.let { openChapter(it, initialHighlight) }
         }
     }
     val settings = remember { SettingsState(container.settings) }
@@ -59,7 +61,7 @@ fun XianzhiApp(
                             onSelect = { navigator.goTab(it) },
                             modifier = Modifier.fillMaxHeight(),
                         )
-                        CurrentScreen(container, navigator, Modifier.fillMaxSize())
+                        CurrentScreen(container, navigator, Modifier.fillMaxSize(), initialQuery)
                     }
                 } else {
                     // 窄屏：常驻底栏 + 内容（阅读页也保留底栏）
@@ -72,7 +74,7 @@ fun XianzhiApp(
                         },
                     ) { padding ->
                         Box(Modifier.fillMaxSize().padding(padding)) {
-                            CurrentScreen(container, navigator, Modifier.fillMaxSize())
+                            CurrentScreen(container, navigator, Modifier.fillMaxSize(), initialQuery)
                         }
                     }
                 }
@@ -86,11 +88,12 @@ private fun CurrentScreen(
     container: AppContainer,
     navigator: AppNavigator,
     modifier: Modifier = Modifier,
+    initialQuery: String = "",
 ) {
     when (navigator.current) {
         is Route.Tabs -> when (navigator.tab) {
             0 -> BooksTab(container, navigator, modifier)
-            1 -> SearchScreen(container, navigator, modifier)
+            1 -> SearchScreen(container, navigator, modifier, initialQuery = initialQuery)
             2 -> SettingsScreen(container, modifier)
             else -> BooksTab(container, navigator, modifier)
         }

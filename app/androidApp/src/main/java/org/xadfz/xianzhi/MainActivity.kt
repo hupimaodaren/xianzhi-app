@@ -61,7 +61,7 @@ private fun DeploySplash() {
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("西安地方志", fontSize = 22.sp)
+                Text(org.xadfz.xianzhi.AppInfo.APP_NAME, fontSize = 22.sp)
                 LinearProgressIndicator(
                     progress = { if (AndroidDataDeployer.progress < 0) 0f else AndroidDataDeployer.progress },
                     modifier = Modifier.width(220.dp).padding(top = 16.dp),

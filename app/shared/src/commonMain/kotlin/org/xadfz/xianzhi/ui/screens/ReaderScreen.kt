@@ -1,6 +1,7 @@
 package org.xadfz.xianzhi.ui.screens
 
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -56,7 +58,7 @@ import org.xadfz.xianzhi.model.ArticleDetail
 import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.settings.SettingsKeys
 import org.xadfz.xianzhi.ui.LocalSettings
-import org.xadfz.xianzhi.ui.RichBody
+import org.xadfz.xianzhi.ui.ParagraphBlock
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 
@@ -124,12 +126,37 @@ fun ReaderScreen(
             return@Scaffold
         }
 
+        val paragraphs = remember(d.detail.body) {
+            org.xadfz.xianzhi.render.splitParagraphs(d.detail.body)
+        }
+        // 检索跳入：首个包含关键词的段落（列表第 0 项是标题头，段落从第 1 项起）
+        val hitParagraph = remember(d.detail.id, highlight) {
+            val kw = highlight
+            if (kw.isNullOrBlank()) -1
+            else paragraphs.indexOfFirst {
+                org.xadfz.xianzhi.render.plainText(it).contains(kw)
+            }
+        }
+
         val listState: LazyListState = remember(articleId) { LazyListState(0, 0) }
-        // 恢复阅读位置
-        LaunchedEffect(articleId) {
-            val idx = container.settings.getInt(SettingsKeys.readerIndex(articleId), 0)
-            val off = container.settings.getInt(SettingsKeys.readerOffset(articleId), 0)
-            if (idx > 0 || off > 0) listState.scrollToItem(idx, off)
+        // 定位：检索跳入时滚动到命中段落并居中；否则恢复上次阅读位置
+        LaunchedEffect(articleId, highlight) {
+            if (hitParagraph >= 0) {
+                val itemIndex = hitParagraph + 1
+                listState.scrollToItem(itemIndex)
+                val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == itemIndex }
+                if (info != null) {
+                    val viewportHeight =
+                        listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+                    val delta = info.offset + info.size / 2f -
+                        (listState.layoutInfo.viewportStartOffset + viewportHeight / 2f)
+                    listState.scroll { scrollBy(delta) }
+                }
+            } else {
+                val idx = container.settings.getInt(SettingsKeys.readerIndex(articleId), 0)
+                val off = container.settings.getInt(SettingsKeys.readerOffset(articleId), 0)
+                if (idx > 0 || off > 0) listState.scrollToItem(idx, off)
+            }
         }
         // 离开页面时记忆位置
         DisposableEffect(articleId) {
@@ -205,9 +232,9 @@ fun ReaderScreen(
                         },
                 )
             }
-            item(key = "body-${d.detail.id}") {
-                RichBody(
-                    body = d.detail.body,
+            itemsIndexed(paragraphs, key = { i, _ -> "p-${d.detail.id}-$i" }) { _, paragraph ->
+                ParagraphBlock(
+                    paragraph = paragraph,
                     container = container,
                     fontSize = settings.fontSize,
                     lineSpacing = settings.lineSpacing,
