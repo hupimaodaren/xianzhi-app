@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -72,6 +73,9 @@ import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.ParagraphBlock
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
+
+/** 空白规范化匹配用：忽略正文中换行/空格差异 */
+private val whitespace = Regex("""\s+""")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,12 +168,24 @@ fun ReaderScreen(
         val paragraphs = remember(d.detail.body) {
             org.xadfz.xianzhi.render.splitParagraphs(d.detail.body)
         }
-        // 检索跳入：首个包含关键词的段落（列表第 0 项是标题头，段落从第 1 项起）
+        // 检索跳入：首个包含关键词的段落（列表第 0 项是标题头，段落从第 1 项起）。
+        // 先按纯文本匹配；找不到时退化为忽略空白差异匹配（规避 SQL 原文与
+        // 渲染文本在空白规范化上的差异导致的定位失败）。
         val hitParagraph = remember(d.detail.id, highlight) {
             val kw = highlight
             if (kw.isNullOrBlank()) -1
-            else paragraphs.indexOfFirst {
-                org.xadfz.xianzhi.render.plainText(it).contains(kw)
+            else {
+                val idx = paragraphs.indexOfFirst {
+                    org.xadfz.xianzhi.render.plainText(it).contains(kw)
+                }
+                if (idx >= 0) idx
+                else {
+                    val kwFlat = kw.replace(whitespace, "")
+                    if (kwFlat.isEmpty()) -1
+                    else paragraphs.indexOfFirst {
+                        org.xadfz.xianzhi.render.plainText(it).replace(whitespace, "").contains(kwFlat)
+                    }
+                }
             }
         }
 
@@ -179,6 +195,8 @@ fun ReaderScreen(
             if (hitParagraph >= 0) {
                 val itemIndex = hitParagraph + 1
                 listState.scrollToItem(itemIndex)
+                // 等一帧让 layoutInfo 反映 scrollToItem 之后的布局，再做居中微调
+                withFrameNanos { }
                 val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == itemIndex }
                 if (info != null) {
                     val viewportHeight =

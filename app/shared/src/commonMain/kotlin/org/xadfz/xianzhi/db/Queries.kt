@@ -77,19 +77,26 @@ class Queries(private val db: Db) {
 
     /**
      * 全文检索：instr 全表扫描（约 1-3 秒），标题命中优先。
-     * [limit] 全局最多返回前 500 条（界面按每页 [PAGE_SIZE] 条分页展示）；
+     * [limit] 全局最多返回条数（界面按每页 [SEARCH_PAGE_SIZE] 条分页展示）；
      * 每条携带命中行及其前后各 2 行上下文。
      */
-    fun search(keyword: String, limit: Int = SEARCH_MAX_HITS): List<SearchHit> {
-        if (keyword.isBlank()) return emptyList()
+    fun search(keyword: String, limit: Int = SEARCH_MAX_HITS): List<SearchHit> =
+        searchPage(keyword, 0, limit)
+
+    /**
+     * 分批检索：与 [search] 同序（标题命中优先，再按 id），从 [offset] 起取 [limit] 条。
+     * 阈值突破后分批续查并用已完成条数展示进度。
+     */
+    fun searchPage(keyword: String, offset: Int, limit: Int): List<SearchHit> {
+        if (keyword.isBlank() || limit <= 0 || offset < 0) return emptyList()
         return db.query(
             """
             SELECT a.id, a.title, a.book, b.title AS book_title, b.cat, a.body
             FROM arts a JOIN books b ON b.id = a.book
             WHERE instr(a.body, ?) > 0 OR instr(a.title, ?) > 0
-            ORDER BY (instr(a.title, ?) > 0) DESC, a.id LIMIT ?
+            ORDER BY (instr(a.title, ?) > 0) DESC, a.id LIMIT ? OFFSET ?
             """.trimIndent(),
-            keyword, keyword, keyword, limit,
+            keyword, keyword, keyword, limit, offset,
         ).map {
             SearchHit(
                 id = it.getLong(0),
@@ -106,6 +113,9 @@ class Queries(private val db: Db) {
         /** 检索结果全局上限与默认分页大小 */
         const val SEARCH_MAX_HITS = 500
         const val SEARCH_PAGE_SIZE = 50
+
+        /** 阈值续查时每批取回的条数（每批一次全表扫描，批越大总耗时越短） */
+        const val SEARCH_FETCH_BATCH = 500
     }
 
     /** 命中篇目数（检索框输入时的预览） */

@@ -24,11 +24,19 @@ class SearchSession {
     var scrollIndex by mutableIntStateOf(0)
     var scrollOffset by mutableIntStateOf(0)
 
+    /** 翻页/新搜索后请求回到列表顶部（从阅读页返回时不置位，以恢复原位置） */
+    var requestScrollTop by mutableStateOf(false)
+
+    /** 结果被截断的上限；0 表示完整展示 */
+    var cappedAt by mutableIntStateOf(0)
+
     /** 执行新搜索或清除时调用，重置分页与滚动 */
     fun resetForNewSearch() {
         page = 0
         scrollIndex = 0
         scrollOffset = 0
+        requestScrollTop = true
+        cappedAt = 0
     }
 
     fun clear() {
@@ -40,5 +48,7 @@ class SearchSession {
         searched = false
         scrollIndex = 0
         scrollOffset = 0
+        requestScrollTop = false
+        cappedAt = 0
     }
 }

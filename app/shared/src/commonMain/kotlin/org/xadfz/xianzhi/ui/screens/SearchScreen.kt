@@ -14,18 +14,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -65,6 +70,7 @@ import org.xadfz.xianzhi.db.Queries
 import org.xadfz.xianzhi.model.SearchHit
 import org.xadfz.xianzhi.search.SearchSnippet
 import org.xadfz.xianzhi.ui.AppNavigator
+import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 
@@ -80,40 +86,103 @@ fun SearchScreen(
     initialQuery: String = "",
 ) {
     val session = container.searchSession
+    val settings = LocalSettings.current!!
     var searching by remember { mutableStateOf(false) }
     var historyVersion by remember { mutableIntStateOf(0) }
     val history = remember(historyVersion) { container.searchHistory.list() }
     val scope = rememberCoroutineScope()
+    // 软阈值暂停确认（>0 时弹窗）：记录触发时的关键词与总命中数
+    var pendingKw by remember { mutableStateOf("") }
+    var pendingTotal by remember { mutableIntStateOf(0) }
+    // 续查进度：progressTarget>0 时展示「已检索 N / M 篇」进度
+    var progressHits by remember { mutableIntStateOf(0) }
+    var progressTarget by remember { mutableIntStateOf(0) }
+    // 达到硬阈值被强制终止的提示弹窗
+    var forceStopped by remember { mutableStateOf(false) }
     // 滚动位置从 session 恢复，保证从阅读页返回时仍在原结果位置
     val listState = rememberLazyListState(session.scrollIndex, session.scrollOffset)
     val totalArticles by produceState<Int?>(null) {
         value = withContext(ioDispatcher) { container.queries.totalArticles() }
     }
 
-    fun doSearch(kw: String) {
+    /** 检索完成：写入会话并复位分页/滚动；cap>0 表示结果被截断到该上限 */
+    fun finishSearch(hits: List<SearchHit>, total: Int, kw: String, cap: Int) {
+        session.totalHits = total
+        session.results = hits
+        session.activeKeyword = kw
+        session.resetForNewSearch()
+        session.cappedAt = cap
+        searching = false
+    }
+
+    fun doSearch(kwRaw: String) {
+        val kw = kwRaw.trim()
         if (kw.isBlank()) return
         session.query = kw
         session.searched = true
         container.searchHistory.add(kw)
         historyVersion++
+        val soft = settings.searchSoftLimit
         scope.launch {
             searching = true
-            val (hits, total) = withContext(ioDispatcher) {
-                container.queries.countHits(kw) to container.queries.search(kw)
+            progressTarget = 0
+            progressHits = 0
+            // 先取总命中数（一次全表扫描），据此判断是否需要阈值确认
+            val total = withContext(ioDispatcher) { container.queries.countHits(kw) }
+            if (total > soft) {
+                // 超过软阈值：暂停，交由用户决定是否继续
+                searching = false
+                pendingKw = kw
+                pendingTotal = total
+            } else {
+                val hits = withContext(ioDispatcher) { container.queries.search(kw, soft) }
+                finishSearch(hits, total, kw, 0)
             }
-            session.totalHits = hits
-            session.results = total
-            session.activeKeyword = kw
-            session.resetForNewSearch()
-            searching = false
+        }
+    }
+
+    /** 用户确认继续：分批续查直到硬阈值或取完全部命中，期间更新进度 */
+    fun continueSearch(kw: String, total: Int) {
+        pendingTotal = 0
+        val target = minOf(total, settings.searchHardLimit)
+        scope.launch {
+            searching = true
+            progressTarget = target
+            progressHits = 0
+            val acc = mutableListOf<SearchHit>()
+            while (acc.size < target) {
+                val batch = withContext(ioDispatcher) {
+                    container.queries.searchPage(
+                        kw, acc.size, minOf(Queries.SEARCH_FETCH_BATCH, target - acc.size),
+                    )
+                }
+                if (batch.isEmpty()) break
+                acc.addAll(batch)
+                progressHits = acc.size
+            }
+            val capped = total > target
+            finishSearch(acc, total, kw, if (capped) target else 0)
+            if (capped) forceStopped = true
+        }
+    }
+
+    /** 用户取消：取回软阈值内的结果并展示 */
+    fun cancelSearch(kw: String, total: Int) {
+        pendingTotal = 0
+        val soft = settings.searchSoftLimit
+        scope.launch {
+            searching = true
+            val hits = withContext(ioDispatcher) { container.queries.search(kw, soft) }
+            finishSearch(hits, total, kw, soft)
         }
     }
 
     val pageCount = (session.results.size + Queries.SEARCH_PAGE_SIZE - 1) / Queries.SEARCH_PAGE_SIZE
-    // 翻页时回到列表顶部；新搜索已在 resetForNewSearch 清零
+    // 翻页/新搜索后回到列表顶部；从阅读页返回时不触发，以恢复原滚动位置
     LaunchedEffect(session.page, session.activeKeyword) {
-        if (session.results.isNotEmpty() && session.scrollIndex == 0 && session.scrollOffset == 0) {
+        if (session.requestScrollTop) {
             listState.scrollToItem(0)
+            session.requestScrollTop = false
         }
     }
     // 调试深链：带初始关键词时自动执行一次检索（仅当 session 尚无结果）
@@ -176,26 +245,45 @@ fun SearchScreen(
             )
 
             when {
-                searching -> Row(
-                    Modifier.fillMaxWidth().padding(28.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        "检索中（全表扫描约 1–3 秒）…",
-                        Modifier.padding(start = 12.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                searching -> if (progressTarget > 0) {
+                    // 续查阶段：已知总量，展示确定性进度
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp)) {
+                        Text(
+                            "已检索 $progressHits / $progressTarget 篇…",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        LinearProgressIndicator(
+                            progress = {
+                                if (progressTarget > 0) {
+                                    progressHits.toFloat() / progressTarget
+                                } else 0f
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth().padding(28.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            "检索中（全表扫描约 1–3 秒）…",
+                            Modifier.padding(start = 12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 session.results.isNotEmpty() -> {
-                    val capped = session.totalHits > Queries.SEARCH_MAX_HITS
                     val rangeFrom = session.page * Queries.SEARCH_PAGE_SIZE + 1
                     val rangeTo = minOf(
                         (session.page + 1) * Queries.SEARCH_PAGE_SIZE, session.results.size,
@@ -203,7 +291,9 @@ fun SearchScreen(
                     Text(
                         buildString {
                             append("命中 ${session.totalHits} 篇 · 当前显示第 $rangeFrom–$rangeTo 篇")
-                            if (capped) append("（全文最多展示前 ${Queries.SEARCH_MAX_HITS} 篇）")
+                            if (session.cappedAt > 0) {
+                                append("（已达上限，仅展示前 ${session.cappedAt} 篇）")
+                            }
                         },
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -235,8 +325,22 @@ fun SearchScreen(
                                 PagerBar(
                                     page = session.page,
                                     pageCount = pageCount,
-                                    onPrev = { if (session.page > 0) session.page-- },
-                                    onNext = { if (session.page < pageCount - 1) session.page++ },
+                                    onPrev = {
+                                        if (session.page > 0) {
+                                            session.page--
+                                            session.requestScrollTop = true
+                                        }
+                                    },
+                                    onNext = {
+                                        if (session.page < pageCount - 1) {
+                                            session.page++
+                                            session.requestScrollTop = true
+                                        }
+                                    },
+                                    onJump = { target ->
+                                        session.page = target
+                                        session.requestScrollTop = true
+                                    },
                                 )
                             }
                         }
@@ -288,36 +392,127 @@ fun SearchScreen(
         }
         }
     }
+
+    // 超过软阈值：暂停并询问是否继续（取消则展示已检索到的前 softLimit 条）
+    if (pendingTotal > 0) {
+        AlertDialog(
+            onDismissRequest = { cancelSearch(pendingKw, pendingTotal) },
+            title = { Text("检索结果较多") },
+            text = {
+                Text(
+                    "本次检索共命中 $pendingTotal 篇，超过当前设定的 ${settings.searchSoftLimit} 条提醒阈值。" +
+                        "继续检索将占用更多系统资源，并需要更长的等待时间。",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { continueSearch(pendingKw, pendingTotal) }) { Text("继续搜索") }
+            },
+            dismissButton = {
+                TextButton(onClick = { cancelSearch(pendingKw, pendingTotal) }) { Text("取消搜索") }
+            },
+        )
+    }
+
+    // 达到硬阈值被强制终止的告知
+    if (forceStopped) {
+        AlertDialog(
+            onDismissRequest = { forceStopped = false },
+            title = { Text("已达结果上限") },
+            text = {
+                Text(
+                    "检索结果已达到当前设定的 ${settings.searchHardLimit} 条上限，已自动停止检索，" +
+                        "当前仅展示已检索到的结果。",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { forceStopped = false }) { Text("知道了") }
+            },
+        )
+    }
 }
 
-/** 底部分页条：每页 50 条，最多 10 页（500 条上限） */
+/**
+ * 底部分页条：前后翻页 + 页码直接跳转。
+ * 跳转输入仅允许数字，超出 1..pageCount 范围时标红并禁用「跳转」。
+ */
 @Composable
-private fun PagerBar(page: Int, pageCount: Int, onPrev: () -> Unit, onNext: () -> Unit) {
-    Row(
+private fun PagerBar(
+    page: Int,
+    pageCount: Int,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onJump: (Int) -> Unit,
+) {
+    Column(
         Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        TextButton(onClick = onPrev, enabled = page > 0) {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onPrev, enabled = page > 0) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text("上一页")
+            }
+            Text(
+                "第 ${page + 1} / $pageCount 页",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 12.dp),
             )
-            Text("上一页")
+            TextButton(onClick = onNext, enabled = page < pageCount - 1) {
+                Text("下一页")
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
-        Text(
-            "第 ${page + 1} / $pageCount 页",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp),
-        )
-        TextButton(onClick = onNext, enabled = page < pageCount - 1) {
-            Text("下一页")
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
+        var jumpInput by remember(page) { mutableStateOf("") }
+        // 仅接受 1..pageCount 范围内的整数页码，其余一律视为无效
+        val jumpPage = jumpInput.toIntOrNull()?.takeIf { it in 1..pageCount }
+        val jumpValid = jumpPage != null
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "跳至",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = jumpInput,
+                onValueChange = { jumpInput = it.filter(Char::isDigit).take(6) },
+                modifier = Modifier
+                    .width(88.dp)
+                    .padding(horizontal = 8.dp),
+                singleLine = true,
+                isError = jumpInput.isNotEmpty() && !jumpValid,
+                placeholder = { Text("${page + 1}") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { jumpPage?.let { onJump(it - 1) } },
+                ),
+                textStyle = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "页（共 $pageCount 页）",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(
+                onClick = { jumpPage?.let { onJump(it - 1) } },
+                enabled = jumpValid,
+            ) { Text("跳转") }
+        }
+        if (jumpInput.isNotEmpty() && !jumpValid) {
+            Text(
+                "请输入 1–$pageCount 范围内的页码",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
     }

@@ -126,6 +126,48 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(12.dp))
 
+            // 检索阈值：超过软阈值时询问、达到硬阈值时自动终止；修改即时生效并持久化
+            SettingCard("检索阈值") {
+                Text(
+                    "结果提醒：${settings.searchSoftLimit} 条",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "命中数超过该值时暂停并询问是否继续",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = settings.searchSoftLimit.toFloat(),
+                    onValueChange = { settings.searchSoftLimit = (it / 100).toInt() * 100 },
+                    valueRange = 100f..5000f,
+                    steps = 48,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "结果上限：${settings.searchHardLimit} 条",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "达到该值时自动停止检索，仅展示已检索到的结果",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = settings.searchHardLimit.toFloat(),
+                    onValueChange = { settings.searchHardLimit = (it / 500).toInt() * 500 },
+                    valueRange = 500f..20000f,
+                    steps = 38,
+                )
+                Text(
+                    "修改即时生效并自动保存",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
             // 关于
             SettingCard("关于") {
                 Text(AppInfo.APP_NAME, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

@@ -43,6 +43,38 @@ class SettingsState(private val store: SettingsStore) {
             _themeMode.value = value
             store.putInt(SettingsKeys.THEME_MODE, value.value)
         }
+
+    // 检索阈值：超过软阈值时询问是否继续，达到硬阈值时强制终止；修改即时生效并持久化
+    private val _searchSoftLimit = mutableIntStateOf(
+        store.getInt(SettingsKeys.SEARCH_SOFT_LIMIT, DEFAULT_SEARCH_SOFT_LIMIT),
+    )
+    var searchSoftLimit: Int
+        get() = _searchSoftLimit.intValue
+        set(value) {
+            val v = value.coerceIn(SOFT_MIN, SOFT_MAX)
+            _searchSoftLimit.intValue = v
+            store.putInt(SettingsKeys.SEARCH_SOFT_LIMIT, v)
+            if (v > searchHardLimit) searchHardLimit = v // 保证硬阈值不小于软阈值
+        }
+
+    private val _searchHardLimit = mutableIntStateOf(
+        store.getInt(SettingsKeys.SEARCH_HARD_LIMIT, DEFAULT_SEARCH_HARD_LIMIT),
+    )
+    var searchHardLimit: Int
+        get() = _searchHardLimit.intValue
+        set(value) {
+            val v = value.coerceIn(searchSoftLimit, HARD_MAX)
+            _searchHardLimit.intValue = v
+            store.putInt(SettingsKeys.SEARCH_HARD_LIMIT, v)
+        }
+
+    companion object {
+        const val DEFAULT_SEARCH_SOFT_LIMIT = 500
+        const val DEFAULT_SEARCH_HARD_LIMIT = 2000
+        const val SOFT_MIN = 100
+        const val SOFT_MAX = 5000
+        const val HARD_MAX = 50000
+    }
 }
 
 val LocalSettings: ProvidableCompositionLocal<SettingsState?> = compositionLocalOf { null }

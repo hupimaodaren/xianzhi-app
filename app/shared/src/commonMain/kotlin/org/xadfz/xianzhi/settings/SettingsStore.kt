@@ -21,6 +21,8 @@ object SettingsKeys {
     const val LINE_SPACING = "line_spacing"   // 1.2..2.0，默认 1.5
     const val THEME_MODE = "theme_mode"       // 0 跟随系统 / 1 浅色 / 2 深色
     const val SEARCH_HISTORY = "search_history"
+    const val SEARCH_SOFT_LIMIT = "search_soft_limit"  // 100..5000，默认 500
+    const val SEARCH_HARD_LIMIT = "search_hard_limit"  // soft..50000，默认 2000
 
     fun readerIndex(articleId: Long) = "reader:idx:$articleId"
     fun readerOffset(articleId: Long) = "reader:off:$articleId"
