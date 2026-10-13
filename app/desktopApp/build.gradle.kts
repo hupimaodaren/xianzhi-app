@@ -32,7 +32,7 @@ compose.desktop {
             // -PwinEdition=image 打图文版（独立产品，可与文字版并存）；默认文字版
             val edition = (project.findProperty("winEdition") as String?) ?: "text"
             packageName = if (edition == "image") "xianzhi-img" else "xianzhi"
-            packageVersion = "0.2.0"
+            packageVersion = "0.3.0"
             // 注意：jpackage 参数文件按平台 ANSI 编码读取，中文 vendor/menuGroup 会报
             // “Input length = 1”；打包元数据保持 ASCII（应用窗口标题仍为中文，不受影响）
             description = "Xian Local Chronicles"

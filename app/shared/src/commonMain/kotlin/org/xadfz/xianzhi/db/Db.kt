@@ -16,5 +16,13 @@ interface Db {
     fun close()
 }
 
+/** 可写数据库：收藏等用户数据使用，支持 DDL/DML 与查询 */
+interface WritableDb : Db {
+    fun exec(sql: String, vararg args: Any?)
+}
+
 /** 以只读方式打开 SQLite 数据库文件 */
 expect fun openReadOnlyDatabase(path: String): Db
+
+/** 以可写方式打开（不存在则创建）SQLite 数据库文件 */
+expect fun openWritableDatabase(path: String): WritableDb

@@ -1,5 +1,6 @@
 package org.xadfz.xianzhi.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -21,21 +22,30 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -55,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withContext
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.model.ArticleDetail
+import org.xadfz.xianzhi.model.Collection
 import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.settings.SettingsKeys
 import org.xadfz.xianzhi.ui.LocalSettings
@@ -91,6 +102,21 @@ fun ReaderScreen(
         }
     }
 
+    // 收藏状态：随文章切换重新查询；点击按钮即时更新本地态避免等待
+    var favorited by remember(articleId) { mutableStateOf(false) }
+    var currentCollId by remember(articleId) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(articleId, container.favorites.version) {
+        val fav = withContext(ioDispatcher) { container.favorites.getFavoriteByArticleId(articleId) }
+        favorited = fav != null
+        currentCollId = fav?.collectionId
+    }
+
+    // 合集列表：随版本变化自动刷新（含新建合集后即时刷新）
+    val collections by produceState<List<Collection>>(emptyList(), container.favorites.version) {
+        value = withContext(ioDispatcher) { container.favorites.listCollections() }
+    }
+    var showCollDialog by remember(articleId) { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -102,6 +128,15 @@ fun ReaderScreen(
                     )
                 },
                 navigationIcon = { BackButton(onBack) },
+                actions = {
+                    val d = data?.detail
+                    if (d != null) {
+                        FavoriteButton(
+                            favorited = favorited,
+                            onClick = { showCollDialog = true },
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
@@ -243,6 +278,191 @@ fun ReaderScreen(
             }
             }
         }
+    }
+
+    // 收藏 / 移动合集对话框
+    val detailForDialog = data?.detail
+    if (showCollDialog && detailForDialog != null) {
+        AddToCollectionDialog(
+            articleTitle = detailForDialog.title,
+            collections = collections,
+            currentCollectionId = currentCollId,
+            favorited = favorited,
+            onDismiss = { showCollDialog = false },
+            onSelect = { collId ->
+                if (favorited) {
+                    container.favorites.moveToCollection(articleId, collId)
+                } else {
+                    container.favorites.addFavorite(
+                        articleId = articleId,
+                        title = detailForDialog.title,
+                        bookId = detailForDialog.bookId,
+                        bookTitle = detailForDialog.bookTitle,
+                        cat = "",
+                        collectionId = collId,
+                    )
+                    favorited = true
+                }
+                currentCollId = collId
+                showCollDialog = false
+            },
+            onCreateCollection = { name ->
+                val newCollId = container.favorites.createCollection(name)
+                if (newCollId != null) {
+                    if (favorited) {
+                        container.favorites.moveToCollection(articleId, newCollId)
+                    } else {
+                        container.favorites.addFavorite(
+                            articleId = articleId,
+                            title = detailForDialog.title,
+                            bookId = detailForDialog.bookId,
+                            bookTitle = detailForDialog.bookTitle,
+                            cat = "",
+                            collectionId = newCollId,
+                        )
+                        favorited = true
+                    }
+                    currentCollId = newCollId
+                    showCollDialog = false
+                }
+            },
+            onRemove = {
+                container.favorites.removeFavorite(articleId)
+                favorited = false
+                currentCollId = null
+                showCollDialog = false
+            },
+        )
+    }
+}
+
+/** 阅读页顶栏收藏按钮：已收藏为实心朱砂书签，未收藏为描边 */
+@Composable
+private fun FavoriteButton(favorited: Boolean, onClick: () -> Unit) {
+    val tint = if (favorited) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.onSurfaceVariant
+    IconButton(onClick = onClick) {
+        Icon(
+            if (favorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+            contentDescription = if (favorited) "管理收藏" else "添加到合集",
+            tint = tint,
+        )
+    }
+}
+
+/**
+ * 收藏 / 移动合集对话框。
+ * - 未收藏时用于「添加到合集」：选择目标合集后调用 [onSelect] 新增收藏。
+ * - 已收藏时用于「移动到合集」：选择目标合集后调用 [onSelect] 更新归属；
+ *   另提供「取消收藏」入口（[onRemove]）。
+ * 内置「+ 新建合集」行，创建后合集列表经 repo.version 自增自动刷新，
+ * 用户可在同一次对话框内接着选中新合集完成收藏。
+ */
+@Composable
+private fun AddToCollectionDialog(
+    articleTitle: String,
+    collections: List<Collection>,
+    currentCollectionId: Long?,
+    favorited: Boolean,
+    onDismiss: () -> Unit,
+    onSelect: (Long?) -> Unit,
+    onCreateCollection: (String) -> Unit,
+    onRemove: () -> Unit,
+) {
+    var showNewField by remember { mutableStateOf(false) }
+    var newCollName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (favorited) "移动到合集" else "添加到合集") },
+        text = {
+            Column {
+                Text(
+                    "「$articleTitle」",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(10.dp))
+                Column {
+                    CollectionRow(
+                        name = "未分组",
+                        selected = currentCollectionId == null,
+                        onClick = { onSelect(null) },
+                    )
+                    collections.forEach { c ->
+                        CollectionRow(
+                            name = c.name,
+                            selected = currentCollectionId == c.id,
+                            onClick = { onSelect(c.id) },
+                        )
+                    }
+                    if (showNewField) {
+                        OutlinedTextField(
+                            value = newCollName,
+                            onValueChange = { newCollName = it },
+                            singleLine = true,
+                            label = { Text("新合集名称") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            trailingIcon = {
+                                TextButton(
+                                    onClick = {
+                                        if (newCollName.isNotBlank()) {
+                                            onCreateCollection(newCollName.trim())
+                                            newCollName = ""
+                                            showNewField = false
+                                        }
+                                    },
+                                ) { Text("创建") }
+                            },
+                        )
+                    } else {
+                        CollectionRow(
+                            name = "+ 新建合集",
+                            selected = false,
+                            isAddNew = true,
+                            onClick = { showNewField = true },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (favorited) {
+                TextButton(onClick = onRemove) { Text("取消收藏") }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
+    )
+}
+
+@Composable
+private fun CollectionRow(
+    name: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    isAddNew: Boolean = false,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (isAddNew) Icons.Filled.Add
+            else if (selected) Icons.Filled.Bookmark
+            else Icons.Filled.BookmarkBorder,
+            contentDescription = null,
+            tint = if (selected || isAddNew) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(name, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

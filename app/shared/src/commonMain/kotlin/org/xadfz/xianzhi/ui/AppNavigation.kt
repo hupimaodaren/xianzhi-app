@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -38,10 +39,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
-/** 三个全局常驻目的地：书目章节 / 检索 / 设置 */
+/** 四个全局常驻目的地：书目章节 / 检索 / 收藏 / 设置（设置保持末位，符合使用直觉） */
 enum class MainDest(val title: String, val icon: ImageVector, val cd: String) {
     BOOKS("书目", Icons.AutoMirrored.Filled.List, "选择书目章节"),
     SEARCH("检索", Icons.Filled.Search, "全文检索"),
+    FAVORITES("收藏", Icons.Filled.Bookmark, "我的收藏"),
     SETTINGS("设置", Icons.Filled.Settings, "设置"),
 }
 

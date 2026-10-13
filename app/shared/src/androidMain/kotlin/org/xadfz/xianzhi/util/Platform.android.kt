@@ -17,3 +17,5 @@ actual fun openUrl(url: String) {
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     AndroidApp.context.startActivity(intent)
 }
+
+actual fun userDataDirPath(): String = AndroidApp.context.filesDir.absolutePath

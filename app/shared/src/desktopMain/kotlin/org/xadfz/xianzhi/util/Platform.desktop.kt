@@ -26,3 +26,6 @@ actual fun openUrl(url: String) {
         Runtime.getRuntime().exec(arrayOf("rundll32", "url.dll,FileProtocolHandler", url))
     }
 }
+
+actual fun userDataDirPath(): String =
+    org.xadfz.xianzhi.settings.DesktopPaths.home().absolutePath

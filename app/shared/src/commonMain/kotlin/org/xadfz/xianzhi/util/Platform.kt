@@ -13,3 +13,6 @@ expect val platformName: String
 
 /** 用系统默认浏览器打开网址（关于页的 GitHub 官方渠道链接） */
 expect fun openUrl(url: String)
+
+/** 用户可写数据目录（收藏库等用户数据存放位置） */
+expect fun userDataDirPath(): String

@@ -38,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -78,25 +79,21 @@ fun SearchScreen(
     // 仅桌面端调试深链使用：启动即执行一次检索
     initialQuery: String = "",
 ) {
-    var query by remember { mutableStateOf(initialQuery) }
+    val session = container.searchSession
     var searching by remember { mutableStateOf(false) }
-    var results by remember { mutableStateOf<List<SearchHit>>(emptyList()) }
-    var totalHits by remember { mutableIntStateOf(0) }
-    var searched by remember { mutableStateOf(false) }
-    var activeKeyword by remember { mutableStateOf("") }
-    var page by remember { mutableIntStateOf(0) }
     var historyVersion by remember { mutableIntStateOf(0) }
     val history = remember(historyVersion) { container.searchHistory.list() }
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    // 滚动位置从 session 恢复，保证从阅读页返回时仍在原结果位置
+    val listState = rememberLazyListState(session.scrollIndex, session.scrollOffset)
     val totalArticles by produceState<Int?>(null) {
         value = withContext(ioDispatcher) { container.queries.totalArticles() }
     }
 
     fun doSearch(kw: String) {
         if (kw.isBlank()) return
-        query = kw
-        searched = true
+        session.query = kw
+        session.searched = true
         container.searchHistory.add(kw)
         historyVersion++
         scope.launch {
@@ -104,21 +101,31 @@ fun SearchScreen(
             val (hits, total) = withContext(ioDispatcher) {
                 container.queries.countHits(kw) to container.queries.search(kw)
             }
-            totalHits = hits
-            results = total
-            activeKeyword = kw
-            page = 0
+            session.totalHits = hits
+            session.results = total
+            session.activeKeyword = kw
+            session.resetForNewSearch()
             searching = false
         }
     }
 
-    val pageCount = (results.size + Queries.SEARCH_PAGE_SIZE - 1) / Queries.SEARCH_PAGE_SIZE
-    LaunchedEffect(page, activeKeyword) {
-        if (results.isNotEmpty()) listState.scrollToItem(0)
+    val pageCount = (session.results.size + Queries.SEARCH_PAGE_SIZE - 1) / Queries.SEARCH_PAGE_SIZE
+    // 翻页时回到列表顶部；新搜索已在 resetForNewSearch 清零
+    LaunchedEffect(session.page, session.activeKeyword) {
+        if (session.results.isNotEmpty() && session.scrollIndex == 0 && session.scrollOffset == 0) {
+            listState.scrollToItem(0)
+        }
     }
-    // 调试深链：带初始关键词时自动执行一次检索
+    // 调试深链：带初始关键词时自动执行一次检索（仅当 session 尚无结果）
     LaunchedEffect(Unit) {
-        if (initialQuery.isNotBlank()) doSearch(initialQuery)
+        if (initialQuery.isNotBlank() && session.results.isEmpty()) doSearch(initialQuery)
+    }
+    // 离开搜索页时记录滚动位置，供返回时恢复
+    DisposableEffect(Unit) {
+        onDispose {
+            session.scrollIndex = listState.firstVisibleItemIndex
+            session.scrollOffset = listState.firstVisibleItemScrollOffset
+        }
     }
 
     Scaffold(
@@ -136,8 +143,8 @@ fun SearchScreen(
             val side = comfortableSidePadding(maxContent = 820.dp)
             Column(Modifier.fillMaxSize()) {
             OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
+                value = session.query,
+                onValueChange = { session.query = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = side, end = side, top = 8.dp, bottom = 4.dp),
@@ -146,19 +153,16 @@ fun SearchScreen(
                 placeholder = { Text("全库检索 ${totalArticles ?: 38978} 篇志书文献") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {
-                    if (query.isNotEmpty()) {
+                    if (session.query.isNotEmpty()) {
                         androidx.compose.material3.IconButton(onClick = {
-                            query = ""
-                            results = emptyList()
-                            searched = false
-                            activeKeyword = ""
+                            session.clear()
                         }) {
                             Icon(Icons.Filled.Clear, contentDescription = "清除")
                         }
                     }
                 },
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onSearch = { doSearch(query) },
+                    onSearch = { doSearch(session.query) },
                 ),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = ImeAction.Search,
@@ -190,25 +194,25 @@ fun SearchScreen(
                     )
                 }
 
-                results.isNotEmpty() -> {
-                    val capped = totalHits > Queries.SEARCH_MAX_HITS
-                    val rangeFrom = page * Queries.SEARCH_PAGE_SIZE + 1
+                session.results.isNotEmpty() -> {
+                    val capped = session.totalHits > Queries.SEARCH_MAX_HITS
+                    val rangeFrom = session.page * Queries.SEARCH_PAGE_SIZE + 1
                     val rangeTo = minOf(
-                        (page + 1) * Queries.SEARCH_PAGE_SIZE, results.size,
+                        (session.page + 1) * Queries.SEARCH_PAGE_SIZE, session.results.size,
                     )
                     Text(
                         buildString {
-                            append("命中 $totalHits 篇 · 当前显示第 $rangeFrom–$rangeTo 篇")
+                            append("命中 ${session.totalHits} 篇 · 当前显示第 $rangeFrom–$rangeTo 篇")
                             if (capped) append("（全文最多展示前 ${Queries.SEARCH_MAX_HITS} 篇）")
                         },
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = side, end = side, top = 8.dp, bottom = 4.dp),
                     )
-                    val pageItems = remember(results, page) {
-                        results.subList(
-                            page * Queries.SEARCH_PAGE_SIZE,
-                            minOf((page + 1) * Queries.SEARCH_PAGE_SIZE, results.size),
+                    val pageItems = remember(session.results, session.page) {
+                        session.results.subList(
+                            session.page * Queries.SEARCH_PAGE_SIZE,
+                            minOf((session.page + 1) * Queries.SEARCH_PAGE_SIZE, session.results.size),
                         )
                     }
                     LazyColumn(
@@ -222,17 +226,17 @@ fun SearchScreen(
                         items(pageItems, key = { it.id }) { hit ->
                             ResultCard(
                                 hit = hit,
-                                keyword = activeKeyword,
-                                onClick = { navigator.openChapter(hit.id, activeKeyword) },
+                                keyword = session.activeKeyword,
+                                onClick = { navigator.openChapter(hit.id, session.activeKeyword) },
                             )
                         }
                         if (pageCount > 1) {
                             item(key = "pager") {
                                 PagerBar(
-                                    page = page,
+                                    page = session.page,
                                     pageCount = pageCount,
-                                    onPrev = { if (page > 0) page-- },
-                                    onNext = { if (page < pageCount - 1) page++ },
+                                    onPrev = { if (session.page > 0) session.page-- },
+                                    onNext = { if (session.page < pageCount - 1) session.page++ },
                                 )
                             }
                         }
@@ -275,9 +279,9 @@ fun SearchScreen(
                 }
 
                 else -> SearchEmpty(
-                    hasQuery = query.isNotBlank(),
-                    noResult = searched,
-                    onSearch = { doSearch(query) },
+                    hasQuery = session.query.isNotBlank(),
+                    noResult = session.searched,
+                    onSearch = { doSearch(session.query) },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

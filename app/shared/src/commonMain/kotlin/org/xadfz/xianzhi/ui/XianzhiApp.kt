@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.ui.screens.BooksTab
+import org.xadfz.xianzhi.ui.screens.FavoritesScreen
 import org.xadfz.xianzhi.ui.screens.ReaderScreen
 import org.xadfz.xianzhi.ui.screens.SearchScreen
 import org.xadfz.xianzhi.ui.screens.SettingsScreen
@@ -39,7 +40,7 @@ fun XianzhiApp(
 ) {
     val navigator = remember {
         AppNavigator().apply {
-            if (initialTab in 1..2) goTab(initialTab)
+            if (initialTab in 1..3) goTab(initialTab)
             initialCat?.let { push(Route.BookList(it)) }
             if (initialBookId != null) push(Route.ArticleList(initialBookId, initialBookTitle))
             initialArticleId?.let { openChapter(it, initialHighlight) }
@@ -94,7 +95,8 @@ private fun CurrentScreen(
         is Route.Tabs -> when (navigator.tab) {
             0 -> BooksTab(container, navigator, modifier)
             1 -> SearchScreen(container, navigator, modifier, initialQuery = initialQuery)
-            2 -> SettingsScreen(container, modifier)
+            2 -> FavoritesScreen(container, navigator, modifier)
+            3 -> SettingsScreen(container, modifier)
             else -> BooksTab(container, navigator, modifier)
         }
         is Route.BookList, is Route.ArticleList -> BooksTab(container, navigator, modifier)
