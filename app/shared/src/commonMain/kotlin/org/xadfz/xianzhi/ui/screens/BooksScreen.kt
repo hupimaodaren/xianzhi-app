@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -68,6 +69,7 @@ fun BooksTab(container: AppContainer, navigator: AppNavigator, modifier: Modifie
             container = container,
             bookId = route.bookId,
             bookTitle = route.bookTitle,
+            listState = navigator.listState("al-${route.bookId}"),
             onBack = { navigator.back() },
             onOpenArticle = { id -> navigator.openChapter(id) },
             modifier = modifier,
@@ -75,12 +77,14 @@ fun BooksTab(container: AppContainer, navigator: AppNavigator, modifier: Modifie
         is Route.BookList -> BookListScreen(
             container = container,
             cat = route.cat,
+            listState = navigator.listState("bl-${route.cat}"),
             onBack = { navigator.back() },
             onOpenBook = { id, title -> navigator.push(Route.ArticleList(id, title)) },
             modifier = modifier,
         )
         else -> CategoryScreen(
             container = container,
+            listState = navigator.listState("cat"),
             onOpenCat = { cat -> navigator.push(Route.BookList(cat)) },
             modifier = modifier,
         )
@@ -132,6 +136,7 @@ fun BrandTitle() {
 @Composable
 private fun CategoryScreen(
     container: AppContainer,
+    listState: LazyListState,
     onOpenCat: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -156,6 +161,7 @@ private fun CategoryScreen(
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val side = comfortableSidePadding(maxContent = 860.dp)
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = side, end = side, top = 12.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -205,6 +211,7 @@ private fun CategoryScreen(
 private fun BookListScreen(
     container: AppContainer,
     cat: String,
+    listState: LazyListState,
     onBack: () -> Unit,
     onOpenBook: (String, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -233,7 +240,8 @@ private fun BookListScreen(
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val side = comfortableSidePadding(maxContent = 860.dp)
             LazyColumn(
-                Modifier.fillMaxSize(),
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = side, end = side),
             ) {
                 items(books!!, key = { it.id }) { book ->
@@ -275,6 +283,7 @@ private fun ArticleListScreen(
     container: AppContainer,
     bookId: String,
     bookTitle: String,
+    listState: LazyListState,
     onBack: () -> Unit,
     onOpenArticle: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -324,7 +333,8 @@ private fun ArticleListScreen(
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val side = comfortableSidePadding(maxContent = 860.dp)
             LazyColumn(
-                Modifier.fillMaxSize(),
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = side, end = side, bottom = 12.dp),
             ) {
                 items(flat, key = { it.key }) { node ->

@@ -1,5 +1,6 @@
 package org.xadfz.xianzhi.ui
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -61,4 +62,12 @@ class AppNavigator {
         tab = index
         while (stack.size > 1) stack.removeAt(stack.lastIndex)
     }
+
+    // 各层级目录列表的滚动位置缓存：导航离开再返回时恢复到点击前的位置。
+    // LazyListState 实例由导航器持有，不受目标页 composition 生命周期影响。
+    private val listStates = mutableMapOf<String, LazyListState>()
+
+    /** 取（或创建）某层级列表的滚动状态；同一 key 始终返回同一实例 */
+    fun listState(key: String): LazyListState =
+        listStates.getOrPut(key) { LazyListState() }
 }
