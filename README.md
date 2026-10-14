@@ -14,8 +14,8 @@
 
 | 版本 | 主库 | 图片资源 | 说明 |
 |---|---|---|---|
-| 文字版 | `xianzhi.db`（166 MB） | 缺字图 4794 个（10.79 MB） | 主力版，体积小速度快 |
-| 带图版 | `xianzhi_img.db`（167 MB） | 缺字图 + 配图 7975 张（514 MB） | 研究版，完整呈现原书面貌 |
+| 文字版 | `xianzhi.db`（61 MB，v2 分块压缩） | 缺字图 4794 个（10.79 MB） | 主力版，体积小速度快 |
+| 带图版 | `xianzhi_img.db`（61 MB，v2 分块压缩） | 缺字图 + 配图 7975 张（514 MB） | 研究版，完整呈现原书面貌 |
 
 ## 功能
 
@@ -38,24 +38,32 @@
 
 ## 下载
 
-最新版本：[**v0.3.2**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.3.2)
+最新版本：[**v0.4.0**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.4.0)
 
 数据已全部内置，无需单独下载数据文件。
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-0.3.2-android-text.apk`（约 80 MB） | `xianzhi-0.3.2-android-image.apk`（约 594 MB） |
-| Windows 安装程序 | `xianzhi-0.3.2-windows-text.exe`（约 168 MB） | `xianzhi-0.3.2-windows-image.exe`（约 664 MB） |
-| Windows 便携免安装 | `xianzhi-0.3.2-windows-text-portable.zip`（约 168 MB） | `xianzhi-0.3.2-windows-image-portable.zip`（约 666 MB） |
+| Android | `xianzhi-0.4.0-android-text.apk`（约 75 MB） | `xianzhi-0.4.0-android-image.apk`（约 589 MB） |
+| Windows 安装程序 | `xianzhi-0.4.0-windows-text.exe`（约 122 MB） | `xianzhi-0.4.0-windows-image.exe`（约 617 MB） |
+| Windows 便携免安装 | `xianzhi-0.4.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.4.0-windows-image-portable.zip`（约 620 MB） |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
 # Windows PowerShell
-Get-FileHash xianzhi-0.3.2-windows-text.exe -Algorithm SHA256
+Get-FileHash xianzhi-0.4.0-windows-text.exe -Algorithm SHA256
 ```
 
 > 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由安装包内置分发，该 tag 仅作历史标记保留。
+
+### v0.4.0 主要更新（轻量化专项）
+
+1. **数据库无损压缩（v2 格式）**：正文按 256 KB 分块 zlib-9 压缩存储，文字版/图文版主库均由约 167 MB 降至 **61 MB（-63.6%）**；38,978 篇正文逐篇字节级校验零差异，检索结果、排序与全部功能完全不变。
+2. **安装包与占用全面缩小**：Windows 文字版安装包 168 → 122 MB（便携版同步缩小约 47 MB）；两端安装后的数据库磁盘占用各减少约 **106 MB**。
+3. **检索更快**：分块解压读取使全库检索的磁盘读取量从 154 MB 降至 55 MB，实际全库检索 0.8–1.0 秒，优于旧版的 1–3 秒。
+4. **依赖精简**：移除 material-icons-extended（在用图标本地等价复刻）、sqlite-jdbc 剥离非 Windows 原生库；视觉与交互零变化。
+5. **旧版无感升级**：v0.3.2 及更早版本覆盖安装后，首次启动自动识别旧库并一次性替换为 v2 库（无需手动清数据），收藏、设置等用户数据不受影响。
 
 ### v0.3.2 主要更新（检索结果分组展示）
 
@@ -92,7 +100,7 @@ Get-FileHash xianzhi-0.3.2-windows-text.exe -Algorithm SHA256
 
 1. 下载对应 APK（文字版体积小，推荐日常阅读；图文版适合研究原书面貌）
 2. 安装时需允许「未知来源」应用
-3. 首次启动会释放内置数据库到应用私有目录，约 1–2 分钟（图文版约需 700 MB 存储空间），期间有进度提示，请勿杀后台
+3. 首次启动会释放内置数据库到应用私有目录，约 1 分钟（图文版另需约 520 MB 图片存储空间），期间有进度提示，请勿杀后台
 4. 系统要求：Android 7.0（API 24）及以上
 
 ### Windows
@@ -114,7 +122,7 @@ Get-FileHash xianzhi-0.3.2-windows-text.exe -Algorithm SHA256
 
 ## 给 Agent / Harness 使用（MCP Server）
 
-本 App 的志书库不仅能用来阅读，还可以**直接接入本机 Agent**（Trae / Claude Desktop / Cursor / Windsurf 等）做全文检索。
+本 App 的志书库不仅能用来阅读，还可以**直接接入本机 Agent**（WorkBuddy / DeepSeek Harness / Trae / Claude Desktop / Cursor / Windsurf 等）做全文检索。
 
 配套项目：**[西安地方志 MCP Server](https://github.com/hupimaodaren/xianzhi-mcp)** —— 全离线、只读、无需联网与 API Key。
 
@@ -123,9 +131,9 @@ Get-FileHash xianzhi-0.3.2-windows-text.exe -Algorithm SHA256
 | 方式 | 说明 |
 |------|------|
 | **用本 App Windows 版自带的数据库**（已安装用户推荐） | 无需额外下载。EXE 安装版位于 `%APPDATA%\xianzhi\data\`；便携版位于解压目录 `app/resources/data/`。MCP Server 会自动发现 |
-| **从 MCP 仓库单独下载** | 未装本 App 也能用：[xianzhi-mcp Releases](https://github.com/hupimaodaren/xianzhi-mcp/releases) 提供 `xianzhi.db`（166.6 MB，文字版），与 `xianzhi-mcp.exe` 放同一目录即可 |
+| **从 MCP 仓库单独下载** | 未装本 App 也能用：[xianzhi-mcp Releases](https://github.com/hupimaodaren/xianzhi-mcp/releases) 提供 v2 压缩版 `xianzhi.db`（60.7 MB，文字版），与 `xianzhi-mcp.exe` 放同一目录即可 |
 
-> 下载 `xianzhi-mcp.exe`（约 31 MB，免装 Python）后，按 MCP 仓库 README 的「3 步上手」接入 Agent。
+> 下载 `xianzhi-mcp.exe`（约 31 MB，免装 Python，v0.1.1 起同时识别 v1/v2 库）后，按 MCP 仓库 README 的「3 步上手」接入 Agent，其中含 WorkBuddy 与 DeepSeek Harness 的配置方法。
 > 两种来源的数据库内容一致（38,978 篇），MCP Server 只读打开，不会修改你的志书库。
 
 ## 版权声明
