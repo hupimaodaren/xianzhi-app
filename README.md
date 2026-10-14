@@ -112,6 +112,22 @@ Get-FileHash xianzhi-0.3.2-windows-text.exe -Algorithm SHA256
 
 系统要求：Windows 10/11 64 位。
 
+## 给 Agent / Harness 使用（MCP Server）
+
+本 App 的志书库不仅能用来阅读，还可以**直接接入本机 Agent**（Trae / Claude Desktop / Cursor / Windsurf 等）做全文检索。
+
+配套项目：**[西安地方志 MCP Server](https://github.com/hupimaodaren/xianzhi-mcp)** —— 全离线、只读、无需联网与 API Key。
+
+**数据库来源二选一**：
+
+| 方式 | 说明 |
+|------|------|
+| **用本 App Windows 版自带的数据库**（已安装用户推荐） | 无需额外下载。EXE 安装版位于 `%APPDATA%\xianzhi\data\`；便携版位于解压目录 `app/resources/data/`。MCP Server 会自动发现 |
+| **从 MCP 仓库单独下载** | 未装本 App 也能用：[xianzhi-mcp Releases](https://github.com/hupimaodaren/xianzhi-mcp/releases) 提供 `xianzhi.db`（166.6 MB，文字版），与 `xianzhi-mcp.exe` 放同一目录即可 |
+
+> 下载 `xianzhi-mcp.exe`（约 31 MB，免装 Python）后，按 MCP 仓库 README 的「3 步上手」接入 Agent。
+> 两种来源的数据库内容一致（38,978 篇），MCP Server 只读打开，不会修改你的志书库。
+
 ## 版权声明
 
 **地方志正文及配图著作权归西安市地方志办公室及各编纂单位所有**，仅供个人学习研究使用，转载请注明出处。
