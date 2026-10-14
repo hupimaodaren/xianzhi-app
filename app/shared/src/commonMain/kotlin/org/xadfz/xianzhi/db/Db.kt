@@ -9,6 +9,7 @@ interface Row {
     fun getString(index: Int): String?
     fun getLong(index: Int): Long
     fun getInt(index: Int): Int
+    fun getBytes(index: Int): ByteArray?
 }
 
 interface Db {
@@ -26,3 +27,6 @@ expect fun openReadOnlyDatabase(path: String): Db
 
 /** 以可写方式打开（不存在则创建）SQLite 数据库文件 */
 expect fun openWritableDatabase(path: String): WritableDb
+
+/** zlib（deflate）解压，两端 actual 均基于 java.util.zip，零新增依赖 */
+expect fun inflateZlib(data: ByteArray): ByteArray

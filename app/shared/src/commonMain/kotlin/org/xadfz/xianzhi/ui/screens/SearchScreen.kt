@@ -22,8 +22,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -70,6 +68,7 @@ import org.xadfz.xianzhi.model.SearchHit
 import org.xadfz.xianzhi.search.SearchGrouping
 import org.xadfz.xianzhi.search.SearchSnippet
 import org.xadfz.xianzhi.ui.AppNavigator
+import org.xadfz.xianzhi.ui.LocalIcons
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
@@ -441,7 +440,7 @@ private fun CategoryHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                imageVector = if (expanded) LocalIcons.ExpandLess else LocalIcons.ExpandMore,
                 contentDescription = if (expanded) "收起" else "展开",
                 tint = fg,
                 modifier = Modifier.size(20.dp),

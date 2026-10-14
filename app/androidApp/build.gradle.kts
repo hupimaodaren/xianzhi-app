@@ -8,9 +8,9 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-// 本地数据工作区（仓库根 app/../数据），含 db 与图片；已从 git 移除，
+// 本地数据工作区（仓库根 app/../data），含 db 与图片；已从 git 移除，
 // 由本机历史构建产物提供，缺失时需从 v0.1.0 安装包或 data v1 归档中取回
-val dataDir = rootProject.projectDir.resolve("../数据")
+val dataDir = rootProject.projectDir.resolve("../data")
 
 // 发布签名：密钥库与口令均为本机文件（.gitignore 排除），口令从密钥文件读取
 val keystoreFile = rootProject.projectDir.resolve("androidApp/release.keystore")
@@ -27,7 +27,7 @@ val copyTextEditionAssets = tasks.register<EditionAssetsCopy>("copyTextEditionAs
     outputDir.set(layout.buildDirectory.dir("dataAssets/text"))
     destinationDir = outputDir.get().asFile
     from(dataDir.resolve("xianzhi.db"))
-    from(dataDir.resolve("缺字图")) { into("missing_chars") }
+    from(dataDir.resolve("missing_chars")) { into("missing_chars") }
 }
 
 // image -> xianzhi_img.db + missing_chars + content_images
@@ -35,8 +35,8 @@ val copyImageEditionAssets = tasks.register<EditionAssetsCopy>("copyImageEdition
     outputDir.set(layout.buildDirectory.dir("dataAssets/image"))
     destinationDir = outputDir.get().asFile
     from(dataDir.resolve("xianzhi_img.db"))
-    from(dataDir.resolve("缺字图")) { into("missing_chars") }
-    from(dataDir.resolve("配图")) { into("content_images") }
+    from(dataDir.resolve("missing_chars")) { into("missing_chars") }
+    from(dataDir.resolve("content_images")) { into("content_images") }
 }
 
 android {

@@ -1,6 +1,47 @@
 import org.gradle.api.tasks.JavaExec
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
+
+// 从缓存中的 sqlite-jdbc 原始 jar 裁剪出仅含 Java 类与 Windows 原生库的运行时 jar
+// （非 Windows 原生库约 20.65MB；本项目双端为 Android(系统 SQLite) 与 Windows，均用不到）
+val sqliteWindowsOnlyJar = tasks.register("sqliteWindowsOnlyJar") {
+    group = "build"
+    description = "裁剪 sqlite-jdbc：保留 Java 类、services 与 Windows 原生库"
+    val module = libs.sqlite.jdbc.get().module.toString()
+    val version = libs.sqlite.jdbc.get().versionConstraint.toString()
+    val source = configurations.detachedConfiguration(dependencies.create("$module:$version"))
+    val outJar = layout.buildDirectory.file("sqlite-win/sqlite-jdbc-windows.jar")
+    inputs.files(source)
+    outputs.file(outJar)
+    doLast {
+        val src = source.files.first { it.name.startsWith("sqlite-jdbc") && it.name.endsWith(".jar") }
+        val out = outJar.get().asFile
+        out.parentFile.mkdirs()
+        ZipFile(src).use { zf ->
+            ZipOutputStream(out.outputStream().buffered()).use { zo ->
+                zf.entries().asSequence()
+                    .filter { e ->
+                        val n = e.name
+                        n == "META-INF/MANIFEST.MF" ||
+                            n.startsWith("META-INF/services/") ||
+                            n.startsWith("META-INF/LICENSE") ||
+                            n.startsWith("META-INF/NOTICE") ||
+                            n.startsWith("META-INF/versions/") ||
+                            n.startsWith("org/sqlite/native/Windows/") ||
+                            (n.startsWith("org/sqlite/") && !n.startsWith("org/sqlite/native/"))
+                    }
+                    .forEach { e ->
+                        zo.putNextEntry(ZipEntry(e.name))
+                        if (!e.isDirectory) zf.getInputStream(e).copyTo(zo)
+                        zo.closeEntry()
+                    }
+            }
+        }
+    }
+}
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -27,7 +68,8 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.ui)
             implementation(compose.material3)
-            implementation(compose.materialIconsExtended)
+            // material-icons-extended（36MB，仅用到 core 外 5 个图标）已移除，
+            // 5 个图标本地复刻见 ui/LocalIcons.kt；core 图标随 material3 传递引入
             implementation(libs.kotlinx.coroutines.core)
         }
 
@@ -39,7 +81,9 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
-                implementation(libs.sqlite.jdbc)
+                // sqlite-jdbc 运行时经 sqliteWindowsOnlyJar 裁剪：仅保留 Java 类与
+                // Windows 原生库（非 Windows 原生库占 20.65MB，本项目仅分发 Windows）
+                implementation(files(sqliteWindowsOnlyJar))
             }
         }
 

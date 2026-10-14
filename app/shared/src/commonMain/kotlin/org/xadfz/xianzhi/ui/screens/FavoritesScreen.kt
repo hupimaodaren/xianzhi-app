@@ -23,10 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -61,6 +58,7 @@ import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.model.Collection
 import org.xadfz.xianzhi.model.Favorite
 import org.xadfz.xianzhi.ui.AppNavigator
+import org.xadfz.xianzhi.ui.LocalIcons
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 
@@ -105,7 +103,7 @@ fun FavoritesScreen(
                     selectedColl?.let { coll ->
                         IconButton(onClick = { renamingColl = coll }) {
                             Icon(
-                                Icons.Filled.DriveFileRenameOutline,
+                                LocalIcons.DriveFileRenameOutline,
                                 contentDescription = "重命名合集",
                             )
                         }
@@ -239,7 +237,7 @@ private fun FavoriteItem(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Filled.Bookmark,
+                        LocalIcons.Bookmark,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(17.dp),
@@ -356,7 +354,7 @@ private fun MoveOption(name: String, selected: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            if (selected) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+            if (selected) LocalIcons.Bookmark else LocalIcons.BookmarkBorder,
             contentDescription = null,
             tint = if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -381,7 +379,7 @@ private fun EmptyFavorites(hasCollections: Boolean, modifier: Modifier = Modifie
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Filled.BookmarkBorder,
+                        LocalIcons.BookmarkBorder,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(32.dp),

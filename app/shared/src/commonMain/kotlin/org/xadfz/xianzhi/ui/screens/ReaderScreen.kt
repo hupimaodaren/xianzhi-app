@@ -23,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,6 +67,7 @@ import org.xadfz.xianzhi.model.ArticleDetail
 import org.xadfz.xianzhi.model.Collection
 import org.xadfz.xianzhi.model.Neighbor
 import org.xadfz.xianzhi.settings.SettingsKeys
+import org.xadfz.xianzhi.ui.LocalIcons
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.ParagraphBlock
 import org.xadfz.xianzhi.ui.comfortableSidePadding
@@ -361,7 +360,7 @@ private fun FavoriteButton(favorited: Boolean, onClick: () -> Unit) {
     else MaterialTheme.colorScheme.onSurfaceVariant
     IconButton(onClick = onClick) {
         Icon(
-            if (favorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+            if (favorited) LocalIcons.Bookmark else LocalIcons.BookmarkBorder,
             contentDescription = if (favorited) "管理收藏" else "添加到合集",
             tint = tint,
         )
@@ -472,8 +471,8 @@ private fun CollectionRow(
     ) {
         Icon(
             if (isAddNew) Icons.Filled.Add
-            else if (selected) Icons.Filled.Bookmark
-            else Icons.Filled.BookmarkBorder,
+            else if (selected) LocalIcons.Bookmark
+            else LocalIcons.BookmarkBorder,
             contentDescription = null,
             tint = if (selected || isAddNew) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant,
