@@ -26,3 +26,7 @@ Thumbs.db
 .idea/
 *.iml
 .vscode/
+.trae/
+
+# 构建/发布日志（临时产物）
+*.log
