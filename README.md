@@ -21,31 +21,47 @@
 
 - **浏览**：栏目 → 书目 → 多级篇目目录树 → 阅读；目录树支持任意层级展开/收起、一键全部展开、记忆展开状态
 - **阅读**：字号无级调节（14–28sp）、行距、浅色/深色主题、阅读位置记忆、上一篇/下一篇
-- **检索**：全库全文检索，每页 50 条；命中超过提醒阈值（默认 500 条，可自定义）时询问是否继续并显示检索进度，达到上限（默认 2000 条，可自定义）自动停止；分页条支持页码直接跳转；点击进入阅读页自动定位并高亮关键词；返回自动还原至原结果位置
+- **检索**：全库全文检索，结果按书目大分类分组展示，分类头显示命中篇数、点击展开/收起，滚动时当前分类头吸附列表顶部便于随时折叠；命中超过提醒阈值（默认 500 条，可自定义）时询问是否继续并显示检索进度，达到上限（默认 2000 条，可自定义）自动停止；点击进入阅读页自动定位并高亮关键词；返回自动还原至原结果位置
 - **收藏**：阅读时一键收藏篇目，自定义合集分组管理；支持新建/重命名/删除合集、按合集筛选浏览、在收藏对话框内一步新建合集
 - **图片**：`⟦img:文件名⟧` 标记解析，文字版缺字图内嵌、带图版配图撑满可放大
 - **设置**：字号行距主题、检索阈值（提醒/上限条数）、关于页（含 GitHub 官方发布与反馈渠道）
 
+## 应用截图
+
+| 书目分类 | 篇目目录 |
+|---|---|
+| [![书目分类](docs/screenshots/books.png)](docs/screenshots/books.png) | [![篇目目录](docs/screenshots/toc.png)](docs/screenshots/toc.png) |
+
+| 全文检索（按书目分类分组） | 阅读（图文混排） |
+|---|---|
+| [![全文检索](docs/screenshots/search.png)](docs/screenshots/search.png) | [![阅读](docs/screenshots/reader.png)](docs/screenshots/reader.png) |
+
 ## 下载
 
-最新版本：[**v0.3.1**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.3.1)
+最新版本：[**v0.3.2**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.3.2)
 
 数据已全部内置，无需单独下载数据文件。
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-0.3.1-android-text.apk`（约 80 MB） | `xianzhi-0.3.1-android-image.apk`（约 594 MB） |
-| Windows 安装程序 | `xianzhi-0.3.1-windows-text.exe`（约 168 MB） | `xianzhi-0.3.1-windows-image.exe`（约 664 MB） |
-| Windows 便携免安装 | `xianzhi-0.3.1-windows-text-portable.zip`（约 168 MB） | `xianzhi-0.3.1-windows-image-portable.zip`（约 666 MB） |
+| Android | `xianzhi-0.3.2-android-text.apk`（约 80 MB） | `xianzhi-0.3.2-android-image.apk`（约 594 MB） |
+| Windows 安装程序 | `xianzhi-0.3.2-windows-text.exe`（约 168 MB） | `xianzhi-0.3.2-windows-image.exe`（约 664 MB） |
+| Windows 便携免安装 | `xianzhi-0.3.2-windows-text-portable.zip`（约 168 MB） | `xianzhi-0.3.2-windows-image-portable.zip`（约 666 MB） |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
 # Windows PowerShell
-Get-FileHash xianzhi-0.3.1-windows-text.exe -Algorithm SHA256
+Get-FileHash xianzhi-0.3.2-windows-text.exe -Algorithm SHA256
 ```
 
 > 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由安装包内置分发，该 tag 仅作历史标记保留。
+
+### v0.3.2 主要更新（检索结果分组展示）
+
+1. **按书目大分类分组**：检索结果由平铺列表改为按六个书目大分类（西安市志、区县志鉴、专业志·部门志、西安年鉴、地情丛书、旧志整理）分组归类；每个分类头显示该类命中篇数，默认折叠，点击展开查看该类结果，无遗漏、无错配，类内保持原检索排序。
+2. **分类头吸附**：展开长结果分类向下滚动时，当前分类头始终吸附在列表顶部，随时可点击折叠，无需滚回顶部；继续滚动进入下一分类时头部自然接替。
+3. **移除分页**：分页条（含页码跳转）随分组展示取消，所有结果一次性归类呈现；阈值分级检索（500 条询问 / 2000 条上限）逻辑不变。
 
 ### v0.3.1 主要更新（检索功能专项升级）
 
