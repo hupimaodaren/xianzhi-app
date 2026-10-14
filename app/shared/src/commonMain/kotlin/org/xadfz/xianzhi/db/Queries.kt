@@ -77,7 +77,7 @@ class Queries(private val db: Db) {
 
     /**
      * 全文检索：instr 全表扫描（约 1-3 秒），标题命中优先。
-     * [limit] 全局最多返回条数（界面按每页 [SEARCH_PAGE_SIZE] 条分页展示）；
+     * [limit] 全局最多返回条数（结果页按书目大分类分组展示）；
      * 每条携带命中行及其前后各 2 行上下文。
      */
     fun search(keyword: String, limit: Int = SEARCH_MAX_HITS): List<SearchHit> =
@@ -110,9 +110,8 @@ class Queries(private val db: Db) {
     }
 
     companion object {
-        /** 检索结果全局上限与默认分页大小 */
+        /** 检索结果全局上限 */
         const val SEARCH_MAX_HITS = 500
-        const val SEARCH_PAGE_SIZE = 50
 
         /** 阈值续查时每批取回的条数（每批一次全表扫描，批越大总耗时越短） */
         const val SEARCH_FETCH_BATCH = 500

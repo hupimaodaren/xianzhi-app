@@ -17,8 +17,10 @@ class SearchSession {
     var results by mutableStateOf<List<SearchHit>>(emptyList())
     var totalHits by mutableIntStateOf(0)
     var activeKeyword by mutableStateOf("")
-    var page by mutableIntStateOf(0)
     var searched by mutableStateOf(false)
+
+    /** 当前展开的书目大分类集合；默认全部收起，仅显示分类名与命中数 */
+    var expandedCats by mutableStateOf<Set<String>>(emptySet())
 
     /** 离开搜索页时记录的列表滚动位置，返回时恢复 */
     var scrollIndex by mutableIntStateOf(0)
@@ -30,13 +32,18 @@ class SearchSession {
     /** 结果被截断的上限；0 表示完整展示 */
     var cappedAt by mutableIntStateOf(0)
 
-    /** 执行新搜索或清除时调用，重置分页与滚动 */
+    /** 执行新搜索或清除时调用，重置展开状态与滚动 */
     fun resetForNewSearch() {
-        page = 0
+        expandedCats = emptySet()
         scrollIndex = 0
         scrollOffset = 0
         requestScrollTop = true
         cappedAt = 0
+    }
+
+    /** 展开/收起某个书目大分类 */
+    fun toggleCategory(cat: String) {
+        expandedCats = if (cat in expandedCats) expandedCats - cat else expandedCats + cat
     }
 
     fun clear() {
@@ -44,7 +51,7 @@ class SearchSession {
         results = emptyList()
         totalHits = 0
         activeKeyword = ""
-        page = 0
+        expandedCats = emptySet()
         searched = false
         scrollIndex = 0
         scrollOffset = 0

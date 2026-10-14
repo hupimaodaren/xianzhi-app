@@ -1,6 +1,7 @@
 package org.xadfz.xianzhi.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,12 +20,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -68,6 +67,7 @@ import kotlinx.coroutines.withContext
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.db.Queries
 import org.xadfz.xianzhi.model.SearchHit
+import org.xadfz.xianzhi.search.SearchGrouping
 import org.xadfz.xianzhi.search.SearchSnippet
 import org.xadfz.xianzhi.ui.AppNavigator
 import org.xadfz.xianzhi.ui.LocalSettings
@@ -76,7 +76,7 @@ import org.xadfz.xianzhi.util.ioDispatcher
 
 private val HIGHLIGHT_COLOR = Color(0xFFFFEB3B)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     container: AppContainer,
@@ -177,9 +177,8 @@ fun SearchScreen(
         }
     }
 
-    val pageCount = (session.results.size + Queries.SEARCH_PAGE_SIZE - 1) / Queries.SEARCH_PAGE_SIZE
-    // 翻页/新搜索后回到列表顶部；从阅读页返回时不触发，以恢复原滚动位置
-    LaunchedEffect(session.page, session.activeKeyword) {
+    // 新搜索后回到列表顶部；从阅读页返回时不触发，以恢复原滚动位置
+    LaunchedEffect(session.activeKeyword, session.results) {
         if (session.requestScrollTop) {
             listState.scrollToItem(0)
             session.requestScrollTop = false
@@ -284,13 +283,14 @@ fun SearchScreen(
                 }
 
                 session.results.isNotEmpty() -> {
-                    val rangeFrom = session.page * Queries.SEARCH_PAGE_SIZE + 1
-                    val rangeTo = minOf(
-                        (session.page + 1) * Queries.SEARCH_PAGE_SIZE, session.results.size,
-                    )
+                    // 按书目大分类分组：默认仅显示分类名与命中数，点击分类展开该类结果
+                    val groups = remember(session.results) {
+                        SearchGrouping.groupByCategory(session.results)
+                    }
+                    val expanded = session.expandedCats
                     Text(
                         buildString {
-                            append("命中 ${session.totalHits} 篇 · 当前显示第 $rangeFrom–$rangeTo 篇")
+                            append("命中 ${session.totalHits} 篇 · ${groups.size} 个书目分类 · 点击分类展开/收起")
                             if (session.cappedAt > 0) {
                                 append("（已达上限，仅展示前 ${session.cappedAt} 篇）")
                             }
@@ -299,12 +299,6 @@ fun SearchScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = side, end = side, top = 8.dp, bottom = 4.dp),
                     )
-                    val pageItems = remember(session.results, session.page) {
-                        session.results.subList(
-                            session.page * Queries.SEARCH_PAGE_SIZE,
-                            minOf((session.page + 1) * Queries.SEARCH_PAGE_SIZE, session.results.size),
-                        )
-                    }
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
@@ -313,35 +307,27 @@ fun SearchScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(pageItems, key = { it.id }) { hit ->
-                            ResultCard(
-                                hit = hit,
-                                keyword = session.activeKeyword,
-                                onClick = { navigator.openChapter(hit.id, session.activeKeyword) },
-                            )
-                        }
-                        if (pageCount > 1) {
-                            item(key = "pager") {
-                                PagerBar(
-                                    page = session.page,
-                                    pageCount = pageCount,
-                                    onPrev = {
-                                        if (session.page > 0) {
-                                            session.page--
-                                            session.requestScrollTop = true
-                                        }
-                                    },
-                                    onNext = {
-                                        if (session.page < pageCount - 1) {
-                                            session.page++
-                                            session.requestScrollTop = true
-                                        }
-                                    },
-                                    onJump = { target ->
-                                        session.page = target
-                                        session.requestScrollTop = true
-                                    },
+                        groups.forEach { group ->
+                            // 粘性分类头：滚动经过该分类内容时头部始终钉在列表顶部，
+                            // 长结果集中随时可点击折叠，无需滚回顶部
+                            stickyHeader(key = "cat-${group.category}") {
+                                CategoryHeader(
+                                    category = group.category,
+                                    count = group.hits.size,
+                                    expanded = group.category in expanded,
+                                    onClick = { session.toggleCategory(group.category) },
                                 )
+                            }
+                            if (group.category in expanded) {
+                                items(group.hits, key = { it.id }) { hit ->
+                                    ResultCard(
+                                        hit = hit,
+                                        keyword = session.activeKeyword,
+                                        onClick = {
+                                            navigator.openChapter(hit.id, session.activeKeyword)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
@@ -432,87 +418,46 @@ fun SearchScreen(
 }
 
 /**
- * 底部分页条：前后翻页 + 页码直接跳转。
- * 跳转输入仅允许数字，超出 1..pageCount 范围时标红并禁用「跳转」。
+ * 书目大分类分组头：显示分类名与该类命中篇数，整行可点击展开/收起。
  */
 @Composable
-private fun PagerBar(
-    page: Int,
-    pageCount: Int,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onJump: (Int) -> Unit,
+private fun CategoryHeader(
+    category: String,
+    count: Int,
+    expanded: Boolean,
+    onClick: () -> Unit,
 ) {
-    Column(
-        Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    val fg = MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 0.dp,
     ) {
         Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onPrev, enabled = page > 0) {
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text("上一页")
-            }
-            Text(
-                "第 ${page + 1} / $pageCount 页",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp),
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "收起" else "展开",
+                tint = fg,
+                modifier = Modifier.size(20.dp),
             )
-            TextButton(onClick = onNext, enabled = page < pageCount - 1) {
-                Text("下一页")
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-        var jumpInput by remember(page) { mutableStateOf("") }
-        // 仅接受 1..pageCount 范围内的整数页码，其余一律视为无效
-        val jumpPage = jumpInput.toIntOrNull()?.takeIf { it in 1..pageCount }
-        val jumpValid = jumpPage != null
-        Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.width(10.dp))
             Text(
-                "跳至",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedTextField(
-                value = jumpInput,
-                onValueChange = { jumpInput = it.filter(Char::isDigit).take(6) },
-                modifier = Modifier
-                    .width(88.dp)
-                    .padding(horizontal = 8.dp),
-                singleLine = true,
-                isError = jumpInput.isNotEmpty() && !jumpValid,
-                placeholder = { Text("${page + 1}") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = { jumpPage?.let { onJump(it - 1) } },
-                ),
-                textStyle = MaterialTheme.typography.bodyMedium,
+                category,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
             Text(
-                "页（共 $pageCount 页）",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            TextButton(
-                onClick = { jumpPage?.let { onJump(it - 1) } },
-                enabled = jumpValid,
-            ) { Text("跳转") }
-        }
-        if (jumpInput.isNotEmpty() && !jumpValid) {
-            Text(
-                "请输入 1–$pageCount 范围内的页码",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
+                "$count 篇",
+                style = MaterialTheme.typography.labelMedium,
+                color = fg,
             )
         }
     }
