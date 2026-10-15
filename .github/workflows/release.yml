@@ -141,8 +141,8 @@ jobs:
         run: |
           $TAG = "${{ needs.init.outputs.tag }}"; $VER = $TAG.TrimStart('v')
           $bin = "app\desktopApp\build\compose\binaries\main-release"
-          if (!(Test-Path "$bin\app\xianzhi\resources\data\xianzhi.db")) { throw "text app-image 缺 xianzhi.db" }
-          if (!(Test-Path "$bin\app\xianzhi\resources\data\missing_chars")) { throw "text app-image 缺 missing_chars" }
+          if (!(Test-Path "$bin\app\xianzhi\app\resources\data\xianzhi.db")) { throw "text app-image 缺 xianzhi.db" }
+          if (!(Test-Path "$bin\app\xianzhi\app\resources\data\missing_chars")) { throw "text app-image 缺 missing_chars" }
           New-Item -ItemType Directory -Force staging | Out-Null
           Copy-Item "$bin\exe\*.exe" "staging\xianzhi-$VER-windows-text.exe"
           python .github\scripts\zip_portable.py "$bin\app\xianzhi" "staging\xianzhi-$VER-windows-text-portable.zip" "xianzhi-$VER-windows-text"
@@ -162,8 +162,8 @@ jobs:
         run: |
           $TAG = "${{ needs.init.outputs.tag }}"; $VER = $TAG.TrimStart('v')
           $bin = "app\desktopApp\build\compose\binaries\main-release"
-          if (!(Test-Path "$bin\app\xianzhi-img\resources\data\xianzhi_img.db")) { throw "image app-image 缺 xianzhi_img.db" }
-          if (!(Test-Path "$bin\app\xianzhi-img\resources\data\content_images")) { throw "image app-image 缺 content_images" }
+          if (!(Test-Path "$bin\app\xianzhi-img\app\resources\data\xianzhi_img.db")) { throw "image app-image 缺 xianzhi_img.db" }
+          if (!(Test-Path "$bin\app\xianzhi-img\app\resources\data\content_images")) { throw "image app-image 缺 content_images" }
           Copy-Item "$bin\exe\*.exe" "staging\xianzhi-$VER-windows-image.exe"
           python .github\scripts\zip_portable.py "$bin\app\xianzhi-img" "staging\xianzhi-$VER-windows-image-portable.zip" "xianzhi-$VER-windows-image"
       - name: Upload to release
