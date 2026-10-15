@@ -1,0 +1,195 @@
+# 西安志 App 自动发布流水线
+#
+# 触发方式（二选一）：
+#   1. 推送 tag：git tag v0.4.1 && git push origin v0.4.1
+#   2. Actions 页手动 Run workflow，输入 tag（如 v0.4.1，将基于所选分支 HEAD 打 tag）
+#
+# 发版 checklist：
+#   1. 更新 app/androidApp/build.gradle.kts 的 versionCode / versionName
+#   2. 更新 app/desktopApp/build.gradle.kts 的 packageVersion
+#   3. 编辑仓库根目录 RELEASE_NOTES.md（发布说明，缺省时用自动提交记录）
+#   4. 提交并推送 main，再推 tag
+#
+# 流程：init 建草稿 Release → android / windows 并行构建并上传制品 →
+#       publish 汇总 SHA256SUMS.txt 并取消草稿正式发布。
+# 数据源：本仓库 data-v2 Release（db + 缺字图 + 配图，由 .github/workflows 外脚本维护）。
+# 需要的 Secrets：KEYSTORE_BASE64（签名密钥库 base64）、KEYSTORE_PASSWORD（密钥口令）。
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '发布标签，如 v0.4.1'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+
+env:
+  DATA_TAG: data-v2
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Resolve tag
+        id: meta
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "release tag: $TAG"
+      - name: Create draft release
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists, will reuse"
+          else
+            gh release create "$TAG" --draft --title "西安志 $TAG" \
+              --notes "CI 构建中，完成后自动发布……" --target "${{ github.sha }}"
+          fi
+
+  android:
+    needs: init
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Check signing secrets
+        run: |
+          [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] || { echo "::error::缺少仓库 secret KEYSTORE_BASE64"; exit 1; }
+          [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ] || { echo "::error::缺少仓库 secret KEYSTORE_PASSWORD"; exit 1; }
+      - name: Download data
+        run: |
+          mkdir -p dl data
+          gh release download "$DATA_TAG" --dir dl
+          cp dl/xianzhi.db dl/xianzhi_img.db data/
+          unzip -q dl/missing_chars.zip -d data
+          unzip -q dl/content_images.zip -d data
+          ls data; du -sh data
+      - name: Write signing files
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/androidApp/release.keystore
+          printf '%s' "${{ secrets.KEYSTORE_PASSWORD }}" > app/androidApp/.keystore.pw
+      - name: Build APKs
+        working-directory: app
+        run: |
+          chmod +x gradlew
+          ./gradlew :androidApp:assembleTextRelease :androidApp:assembleImageRelease --no-daemon --stacktrace
+      - name: Stage and upload
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"; VER="${TAG#v}"
+          mkdir -p staging
+          cp app/androidApp/build/outputs/apk/text/release/*.apk "staging/xianzhi-${VER}-android-text.apk"
+          cp app/androidApp/build/outputs/apk/image/release/*.apk "staging/xianzhi-${VER}-android-image.apk"
+          ls -la staging
+          gh release upload "$TAG" staging/* --clobber
+
+  windows:
+    needs: init
+    runs-on: windows-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Download data
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dl, data | Out-Null
+          gh release download "$env:DATA_TAG" --dir dl
+          Copy-Item dl\xianzhi.db, dl\xianzhi_img.db data\
+          Expand-Archive dl\missing_chars.zip -DestinationPath data
+          Expand-Archive dl\content_images.zip -DestinationPath data
+          Get-ChildItem data
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+      - name: Package text edition
+        shell: pwsh
+        working-directory: app
+        run: |
+          $res = "desktopApp\build\app-resources\common\data"
+          New-Item -ItemType Directory -Force $res | Out-Null
+          Copy-Item ..\data\xianzhi.db $res\
+          Copy-Item -Recurse ..\data\missing_chars $res\
+          .\gradlew.bat :desktopApp:packageReleaseExe :desktopApp:packageReleaseAppImage --no-daemon --stacktrace
+      - name: Stage text artifacts
+        shell: pwsh
+        run: |
+          $TAG = "${{ needs.init.outputs.tag }}"; $VER = $TAG.TrimStart('v')
+          $bin = "app\desktopApp\build\compose\binaries\main-release"
+          if (!(Test-Path "$bin\app\xianzhi\resources\data\xianzhi.db")) { throw "text app-image 缺 xianzhi.db" }
+          if (!(Test-Path "$bin\app\xianzhi\resources\data\missing_chars")) { throw "text app-image 缺 missing_chars" }
+          New-Item -ItemType Directory -Force staging | Out-Null
+          Copy-Item "$bin\exe\*.exe" "staging\xianzhi-$VER-windows-text.exe"
+          python .github\scripts\zip_portable.py "$bin\app\xianzhi" "staging\xianzhi-$VER-windows-text-portable.zip" "xianzhi-$VER-windows-text"
+      - name: Package image edition
+        shell: pwsh
+        working-directory: app
+        run: |
+          $res = "desktopApp\build\app-resources\common\data"
+          Remove-Item -Recurse -Force $res -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force $res | Out-Null
+          Copy-Item ..\data\xianzhi_img.db $res\
+          Copy-Item -Recurse ..\data\missing_chars $res\
+          Copy-Item -Recurse ..\data\content_images $res\
+          .\gradlew.bat :desktopApp:packageReleaseExe :desktopApp:packageReleaseAppImage -PwinEdition=image --no-daemon --stacktrace
+      - name: Stage image artifacts
+        shell: pwsh
+        run: |
+          $TAG = "${{ needs.init.outputs.tag }}"; $VER = $TAG.TrimStart('v')
+          $bin = "app\desktopApp\build\compose\binaries\main-release"
+          if (!(Test-Path "$bin\app\xianzhi-img\resources\data\xianzhi_img.db")) { throw "image app-image 缺 xianzhi_img.db" }
+          if (!(Test-Path "$bin\app\xianzhi-img\resources\data\content_images")) { throw "image app-image 缺 content_images" }
+          Copy-Item "$bin\exe\*.exe" "staging\xianzhi-$VER-windows-image.exe"
+          python .github\scripts\zip_portable.py "$bin\app\xianzhi-img" "staging\xianzhi-$VER-windows-image-portable.zip" "xianzhi-$VER-windows-image"
+      - name: Upload to release
+        shell: pwsh
+        run: |
+          Get-ChildItem staging
+          gh release upload "${{ needs.init.outputs.tag }}" staging\* --clobber
+
+  publish:
+    needs: [init, android, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checksum all artifacts
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"
+          mkdir -p dist && cd dist
+          gh release download "$TAG" --dir . --pattern 'xianzhi-*'
+          [ "$(ls xianzhi-* | wc -l)" -eq 6 ] || { echo "::error::制品不足 6 个"; ls -la; exit 1; }
+          sha256sum xianzhi-* | tee SHA256SUMS.txt
+          gh release upload "$TAG" SHA256SUMS.txt --clobber
+      - name: Publish release
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"
+          if [ -f RELEASE_NOTES.md ]; then
+            gh release edit "$TAG" --draft=false --notes-file RELEASE_NOTES.md
+          else
+            gh release edit "$TAG" --draft=false --generate-notes
+          fi
+          gh release view "$TAG"

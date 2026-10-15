@@ -1,6 +1,8 @@
 # 本地数据工作区与历史构建脚本（不进 git）
 data/
 scripts/
+# 但 GitHub Actions 使用的辅助脚本需要入库
+!.github/scripts/
 
 # 构建产物
 build/
