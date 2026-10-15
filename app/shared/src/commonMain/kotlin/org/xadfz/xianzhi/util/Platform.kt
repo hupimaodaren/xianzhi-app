@@ -16,3 +16,10 @@ expect fun openUrl(url: String)
 
 /** 用户可写数据目录（收藏库等用户数据存放位置） */
 expect fun userDataDirPath(): String
+
+/**
+ * 阅读历史的相对时间显示：
+ * 1 分钟内「刚刚」，1 小时内「N 分钟前」，24 小时内「N 小时前」，
+ * 同年「M月d日」，跨年「yyyy年M月d日」；未来时间（时钟误差）按「刚刚」处理。
+ */
+expect fun formatHistoryTime(nowMillis: Long, tsMillis: Long): String

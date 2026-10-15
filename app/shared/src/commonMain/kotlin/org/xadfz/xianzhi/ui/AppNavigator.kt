@@ -12,6 +12,8 @@ sealed class Route {
     data object Tabs : Route()
     data class BookList(val cat: String) : Route()
     data class ArticleList(val bookId: String, val bookTitle: String) : Route()
+    /** 最近阅读（设置页进入的二级页面） */
+    data object History : Route()
     data class Reader(val articleId: Long, val highlight: String? = null) : Route()
 }
 

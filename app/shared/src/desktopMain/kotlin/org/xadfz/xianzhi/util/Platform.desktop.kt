@@ -29,3 +29,15 @@ actual fun openUrl(url: String) {
 
 actual fun userDataDirPath(): String =
     org.xadfz.xianzhi.settings.DesktopPaths.home().absolutePath
+
+actual fun formatHistoryTime(nowMillis: Long, tsMillis: Long): String {
+    val diff = nowMillis - tsMillis
+    if (diff < 60_000L) return "刚刚"
+    if (diff < 3_600_000L) return "${diff / 60_000L} 分钟前"
+    if (diff < 86_400_000L) return "${diff / 3_600_000L} 小时前"
+    val now = java.util.Calendar.getInstance().apply { timeInMillis = nowMillis }
+    val ts = java.util.Calendar.getInstance().apply { timeInMillis = tsMillis }
+    val md = "${ts.get(java.util.Calendar.MONTH) + 1}月${ts.get(java.util.Calendar.DAY_OF_MONTH)}日"
+    return if (now.get(java.util.Calendar.YEAR) == ts.get(java.util.Calendar.YEAR)) md
+    else "${ts.get(java.util.Calendar.YEAR)}年$md"
+}

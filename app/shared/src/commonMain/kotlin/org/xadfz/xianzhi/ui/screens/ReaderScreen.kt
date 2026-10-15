@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -112,6 +113,14 @@ fun ReaderScreen(
         val fav = withContext(ioDispatcher) { container.favorites.getFavoriteByArticleId(articleId) }
         favorited = fav != null
         currentCollId = fav?.collectionId
+    }
+
+    // 阅读历史：正文加载成功后记录（同篇重读自动置顶，总量封顶见 HistoryRepository）
+    LaunchedEffect(data?.detail?.id) {
+        val dd = data?.detail ?: return@LaunchedEffect
+        withContext(ioDispatcher) {
+            container.history.record(dd.id, dd.title, dd.bookId, dd.bookTitle)
+        }
     }
 
     // 合集列表：随版本变化自动刷新（含新建合集后即时刷新）
@@ -228,6 +237,8 @@ fun ReaderScreen(
 
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val hp = comfortableSidePadding(maxContent = 760.dp, min = 20.dp)
+            // 正文可选择复制：仅作用于文字（标题与段落），块级配图点击放大不受影响
+            SelectionContainer {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -292,6 +303,7 @@ fun ReaderScreen(
                     lineSpacing = settings.lineSpacing,
                     keyword = highlight,
                 )
+            }
             }
             }
         }

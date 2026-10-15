@@ -3,21 +3,23 @@
 打 tag 前务必更新：标题版本号、更新内容、下载表中的版本号与体积、Full Changelog 链接。
 -->
 
-## 西安志 vX.Y.Z
+## 西安志 v0.5.0
 
 81 部书 / 38,978 篇志书文献的**全离线**阅读应用，Windows 与 Android 双平台、双版本同步发布。
 
 ### 本版更新
 
-- TODO：填写本版更新内容
+- 新增「最近阅读」功能：设置页可查看阅读历史，点击条目直达正文并自动恢复上次阅读位置；支持单条删除与一键清空
+- 阅读页正文支持文本长按或鼠标拖拽选择复制
+- 修正关于页版本号显示为 0.3.2 的问题，当前版本正确显示为 0.5.0
 
 ### 下载选择
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-X.Y.Z-android-text.apk`（约 75 MB） | `xianzhi-X.Y.Z-android-image.apk`（约 589 MB） |
-| Windows 安装程序 | `xianzhi-X.Y.Z-windows-text.exe`（约 122 MB） | `xianzhi-X.Y.Z-windows-image.exe`（约 617 MB） |
-| Windows 便携免安装 | `xianzhi-X.Y.Z-windows-text-portable.zip`（约 121 MB） | `xianzhi-X.Y.Z-windows-image-portable.zip`（约 620 MB） |
+| Android | `xianzhi-0.5.0-android-text.apk`（约 75 MB） | `xianzhi-0.5.0-android-image.apk`（约 589 MB） |
+| Windows 安装程序 | `xianzhi-0.5.0-windows-text.exe`（约 122 MB） | `xianzhi-0.5.0-windows-image.exe`（约 617 MB） |
+| Windows 便携免安装 | `xianzhi-0.5.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.5.0-windows-image-portable.zip`（约 620 MB） |
 
 - **纯文字版**：含全部 38,978 篇正文与 4,794 个缺字图；检索、阅读、收藏、设置功能完整。
 - **完整图文版**：在文字版基础上内置全部 7,975 张配图，体积较大但无需联网。
@@ -38,4 +40,4 @@
 
 数据来源：西安市地方志办公室官网（xadfz.xa.gov.cn）。正文及配图著作权归西安市地方志办公室及各编纂单位所有，仅供个人学习研究使用，转载请注明出处。软件代码以 MIT 协议开源：https://github.com/hupimaodaren/xianzhi-app
 
-**Full Changelog**: https://github.com/hupimaodaren/xianzhi-app/compare/v0.4.0...vX.Y.Z
+**Full Changelog**: https://github.com/hupimaodaren/xianzhi-app/compare/v0.4.0...v0.5.0

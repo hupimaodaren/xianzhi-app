@@ -20,11 +20,11 @@
 ## 功能
 
 - **浏览**：栏目 → 书目 → 多级篇目目录树 → 阅读；目录树支持任意层级展开/收起、一键全部展开、记忆展开状态
-- **阅读**：字号无级调节（14–28sp）、行距、浅色/深色主题、阅读位置记忆、上一篇/下一篇
+- **阅读**：字号无级调节（14–28sp）、行距、浅色/深色主题、阅读位置记忆、上一篇/下一篇、正文长按/拖拽选择复制
 - **检索**：全库全文检索，结果按书目大分类分组展示，分类头显示命中篇数、点击展开/收起，滚动时当前分类头吸附列表顶部便于随时折叠；命中超过提醒阈值（默认 500 条，可自定义）时询问是否继续并显示检索进度，达到上限（默认 2000 条，可自定义）自动停止；点击进入阅读页自动定位并高亮关键词；返回自动还原至原结果位置
 - **收藏**：阅读时一键收藏篇目，自定义合集分组管理；支持新建/重命名/删除合集、按合集筛选浏览、在收藏对话框内一步新建合集
 - **图片**：`⟦img:文件名⟧` 标记解析，文字版缺字图内嵌、带图版配图撑满可放大
-- **设置**：字号行距主题、检索阈值（提醒/上限条数）、关于页（含 GitHub 官方发布与反馈渠道）
+- **设置**：字号行距主题、检索阈值（提醒/上限条数）、最近阅读历史（点击续读）、关于页（含 GitHub 官方发布与反馈渠道）
 
 ## 应用截图
 
@@ -38,24 +38,30 @@
 
 ## 下载
 
-最新版本：[**v0.4.0**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.4.0)
+最新版本：[**v0.5.0**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.5.0)
 
 数据已全部内置，无需单独下载数据文件。
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-0.4.0-android-text.apk`（约 75 MB） | `xianzhi-0.4.0-android-image.apk`（约 589 MB） |
-| Windows 安装程序 | `xianzhi-0.4.0-windows-text.exe`（约 122 MB） | `xianzhi-0.4.0-windows-image.exe`（约 617 MB） |
-| Windows 便携免安装 | `xianzhi-0.4.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.4.0-windows-image-portable.zip`（约 620 MB） |
+| Android | `xianzhi-0.5.0-android-text.apk`（约 75 MB） | `xianzhi-0.5.0-android-image.apk`（约 589 MB） |
+| Windows 安装程序 | `xianzhi-0.5.0-windows-text.exe`（约 122 MB） | `xianzhi-0.5.0-windows-image.exe`（约 617 MB） |
+| Windows 便携免安装 | `xianzhi-0.5.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.5.0-windows-image-portable.zip`（约 620 MB） |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
 # Windows PowerShell
-Get-FileHash xianzhi-0.4.0-windows-text.exe -Algorithm SHA256
+Get-FileHash xianzhi-0.5.0-windows-text.exe -Algorithm SHA256
 ```
 
 > 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由安装包内置分发，该 tag 仅作历史标记保留。
+
+### v0.5.0 主要更新（阅读体验）
+
+1. **最近阅读**：设置页新增「最近阅读」入口，按时间倒序展示阅读历史（相对时间显示，如「5 分钟前」「10月13日」），点击条目直达正文并自动恢复上次阅读位置；支持单条删除与一键清空，历史独立于收藏，总量封顶 200 条自动淘汰最旧记录。
+2. **正文选择复制**：阅读页正文支持长按（Android）或鼠标拖拽（Windows）选择文本并复制，便于摘录引用；与配图点击放大、键盘翻篇、检索高亮等既有交互无冲突。
+3. **版本号修正**：修复关于页版本号停留在 0.3.2 未随发布更新的问题，现正确显示当前版本。
 
 ### v0.4.0 主要更新（轻量化专项）
 

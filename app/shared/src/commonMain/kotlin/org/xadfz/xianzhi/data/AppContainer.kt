@@ -3,6 +3,7 @@ package org.xadfz.xianzhi.data
 import org.xadfz.xianzhi.db.Queries
 import org.xadfz.xianzhi.db.openReadOnlyDatabase
 import org.xadfz.xianzhi.favorites.FavoritesRepository
+import org.xadfz.xianzhi.history.HistoryRepository
 import org.xadfz.xianzhi.search.SearchSession
 import org.xadfz.xianzhi.settings.SearchHistory
 import org.xadfz.xianzhi.settings.SettingsStore
@@ -23,6 +24,7 @@ class AppContainer(
     val queries = Queries(db)
     val searchHistory = SearchHistory(settings)
     val favorites = FavoritesRepository()
+    val history = HistoryRepository()
     val searchSession = SearchSession()
 
     val isImageEdition: Boolean get() = contentImgDir != null
@@ -34,5 +36,6 @@ class AppContainer(
     fun close() {
         db.close()
         favorites.close()
+        history.close()
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.ui.screens.BooksTab
 import org.xadfz.xianzhi.ui.screens.FavoritesScreen
+import org.xadfz.xianzhi.ui.screens.HistoryScreen
 import org.xadfz.xianzhi.ui.screens.ReaderScreen
 import org.xadfz.xianzhi.ui.screens.SearchScreen
 import org.xadfz.xianzhi.ui.screens.SettingsScreen
@@ -96,10 +97,11 @@ private fun CurrentScreen(
             0 -> BooksTab(container, navigator, modifier)
             1 -> SearchScreen(container, navigator, modifier, initialQuery = initialQuery)
             2 -> FavoritesScreen(container, navigator, modifier)
-            3 -> SettingsScreen(container, modifier)
+            3 -> SettingsScreen(container, navigator, modifier)
             else -> BooksTab(container, navigator, modifier)
         }
         is Route.BookList, is Route.ArticleList -> BooksTab(container, navigator, modifier)
+        is Route.History -> HistoryScreen(container, navigator, modifier)
         is Route.Reader -> {
             val route = navigator.current as Route.Reader
             ReaderScreen(

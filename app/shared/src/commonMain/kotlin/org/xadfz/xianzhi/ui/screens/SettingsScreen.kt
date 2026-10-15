@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -36,7 +39,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.withContext
 import org.xadfz.xianzhi.AppInfo
 import org.xadfz.xianzhi.data.AppContainer
+import org.xadfz.xianzhi.ui.AppNavigator
 import org.xadfz.xianzhi.ui.LocalSettings
+import org.xadfz.xianzhi.ui.Route
 import org.xadfz.xianzhi.ui.ThemeMode
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
@@ -45,13 +50,22 @@ import org.xadfz.xianzhi.util.platformName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    container: AppContainer,
+    navigator: AppNavigator,
+    modifier: Modifier = Modifier,
+) {
     val settings = LocalSettings.current!!
 
     val stats by produceState<Pair<Int, Int>?>(null) {
         value = withContext(ioDispatcher) {
             container.queries.totalBooks() to container.queries.totalArticles()
         }
+    }
+
+    // 最近阅读记录数（随历史库写入自动刷新）
+    val historyCount by produceState(0, container.history.version) {
+        value = withContext(ioDispatcher) { container.history.count() }
     }
 
     Scaffold(
@@ -164,6 +178,37 @@ fun SettingsScreen(container: AppContainer, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // 最近阅读入口：进入按时间倒序的阅读历史列表
+            SettingCard("最近阅读") {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { navigator.push(Route.History) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (historyCount > 0) "共 $historyCount 条记录" else "暂无阅读记录",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            "保留最近 200 篇，点击条目可从上次位置继续阅读",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))
