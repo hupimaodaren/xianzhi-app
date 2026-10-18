@@ -119,6 +119,7 @@ fun SearchScreen(
         if (kw.isBlank()) return
         session.query = kw
         session.searched = true
+        // 写入内存并排队落盘（桌面端由 DesktopSettings 异步合并写入，不阻塞此处）
         container.searchHistory.add(kw)
         historyVersion++
         val soft = settings.searchSoftLimit
@@ -355,7 +356,7 @@ fun SearchScreen(
                         contentPadding = PaddingValues(start = side, end = side, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(history) { kw ->
+                        items(history, key = { it }) { kw ->
                             ResultCard(
                                 hit = null,
                                 keyword = kw,

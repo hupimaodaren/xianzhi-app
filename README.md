@@ -38,24 +38,28 @@
 
 ## 下载
 
-最新版本：[**v0.5.0**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.5.0)
+最新版本：[**v0.5.1**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.5.1)
 
 数据已全部内置，无需单独下载数据文件。
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-0.5.0-android-text.apk`（约 75 MB） | `xianzhi-0.5.0-android-image.apk`（约 589 MB） |
-| Windows 安装程序 | `xianzhi-0.5.0-windows-text.exe`（约 122 MB） | `xianzhi-0.5.0-windows-image.exe`（约 617 MB） |
-| Windows 便携免安装 | `xianzhi-0.5.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.5.0-windows-image-portable.zip`（约 620 MB） |
+| Android | `xianzhi-0.5.1-android-text.apk`（约 75 MB） | `xianzhi-0.5.1-android-image.apk`（约 589 MB） |
+| Windows 安装程序 | `xianzhi-0.5.1-windows-text.exe`（约 122 MB） | `xianzhi-0.5.1-windows-image.exe`（约 617 MB） |
+| Windows 便携免安装 | `xianzhi-0.5.1-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.5.1-windows-image-portable.zip`（约 620 MB） |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
 # Windows PowerShell
-Get-FileHash xianzhi-0.5.0-windows-text.exe -Algorithm SHA256
+Get-FileHash xianzhi-0.5.1-windows-text.exe -Algorithm SHA256
 ```
 
 > 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由安装包内置分发，该 tag 仅作历史标记保留。
+
+### v0.5.1 主要更新（性能与工程优化）
+
+本版界面与功能与 v0.5.0 完全一致，仅做内部优化：阅读页段落渲染加入缓存（滚动不再重复解析段落与查询缺字图）、书目浏览按分类单查（不再加载全部书目后筛选）、阅读页收藏状态按篇号直查、桌面端设置改为异步合并写入（拖动字号/行距与记录阅读位置不再阻塞界面）、Android 与桌面端数值列读取行为对齐，并清理了若干无用代码。
 
 ### v0.5.0 主要更新（阅读体验）
 

@@ -116,4 +116,17 @@ class QueriesSearchPageTest {
         assertEquals("前文\n含有关键词的行1\n后文", detail.body)
         assertEquals("测试书目", detail.bookTitle)
     }
+
+    /** booksOfCategory 用于书目列表页，须只返回本分类且按 seq、id 排序 */
+    @Test
+    fun booksOfCategoryFiltersAndOrders() {
+        db.exec("INSERT INTO books (id, title, cat, seq, n) VALUES ('b2', '另一书目', '另一栏目', 0, 3)")
+        db.exec("INSERT INTO books (id, title, cat, seq, n) VALUES ('b3', '同栏目书目', '测试栏目', 2, 5)")
+
+        val same = queries.booksOfCategory("测试栏目")
+        assertEquals(listOf("b1", "b3"), same.map { it.id }) // seq 1 在 seq 2 之前
+        assertEquals(7, same.first { it.id == "b1" }.n)
+        assertEquals(listOf("另一书目"), queries.booksOfCategory("另一栏目").map { it.title })
+        assertTrue(queries.booksOfCategory("不存在栏目").isEmpty())
+    }
 }

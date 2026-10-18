@@ -4,7 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,29 +33,6 @@ import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.render.RichSegment
 import org.xadfz.xianzhi.render.parseSegments
 import org.xadfz.xianzhi.render.soleImage
-import org.xadfz.xianzhi.render.splitParagraphs
-
-/**
- * 正文渲染：段落 + ⟦img:⟧ 标记图文混排。
- * - 缺字图：随文字流内嵌，高度约 1.2em，垂直居中
- * - 内容图（带图版）：块级撑满，点击看大图
- * - 检索跳入：keyword 黄底高亮
- */
-@Composable
-fun RichBody(
-    body: String,
-    container: AppContainer,
-    fontSize: Int,
-    lineSpacing: Float,
-    keyword: String? = null,
-) {
-    val paragraphs = remember(body) { splitParagraphs(body) }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        for (p in paragraphs) {
-            ParagraphBlock(p, container, fontSize, lineSpacing, keyword)
-        }
-    }
-}
 
 /**
  * 单个段落（或块级配图）的渲染。阅读页把每个段落作为独立的懒列表项，
@@ -88,44 +64,49 @@ private fun InlineParagraph(
 ) {
     val segments = remember(paragraph) { parseSegments(paragraph) }
     // 先判定哪些标记对应缺字图（文件存在），builder 内不能调用 remember
-    val missingFiles = remember(paragraph) {
+    val missingFiles = remember(paragraph, container) {
         segments.mapNotNull { (it as? RichSegment.Image)?.file }
             .filter { org.xadfz.xianzhi.util.fileExists(container.missingImagePath(it)) }
             .toSet()
     }
-    val inlineContents = HashMap<String, InlineTextContent>()
-    val annotated = buildAnnotatedString {
-        var imgIndex = 0
-        for (seg in segments) {
-            when (seg) {
-                is RichSegment.Text -> appendHighlighted(seg.text, keyword)
-                is RichSegment.Image -> {
-                    if (seg.file in missingFiles) {
-                        val id = "img$imgIndex"
-                        imgIndex++
-                        appendInlineContent(id, "[字]")
-                        inlineContents[id] = InlineTextContent(
-                            Placeholder(1.2.em, 1.2.em, PlaceholderVerticalAlign.Center),
-                        ) {
-                            val painter = rememberFilePainter(container.missingImagePath(seg.file))
-                            if (painter != null) {
-                                Image(
-                                    painter = painter,
-                                    contentDescription = "缺字",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height((fontSize * 1.2f).dp),
-                                )
+    // 注解文本与内联内容表成对缓存：仅当段落内容/字号/高亮词变化（如调节字号）才
+    // 重新解析与查文件，其余重组（滚动、父级状态变化）直接复用
+    val (annotated, inlineContents) = remember(paragraph, keyword, fontSize, container, missingFiles) {
+        val contents = HashMap<String, InlineTextContent>()
+        val text = buildAnnotatedString {
+            var imgIndex = 0
+            for (seg in segments) {
+                when (seg) {
+                    is RichSegment.Text -> appendHighlighted(seg.text, keyword)
+                    is RichSegment.Image -> {
+                        if (seg.file in missingFiles) {
+                            val id = "img$imgIndex"
+                            imgIndex++
+                            appendInlineContent(id, "[字]")
+                            contents[id] = InlineTextContent(
+                                Placeholder(1.2.em, 1.2.em, PlaceholderVerticalAlign.Center),
+                            ) {
+                                val painter = rememberFilePainter(container.missingImagePath(seg.file))
+                                if (painter != null) {
+                                    Image(
+                                        painter = painter,
+                                        contentDescription = "缺字",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height((fontSize * 1.2f).dp),
+                                    )
+                                }
                             }
+                        } else if (container.isImageEdition) {
+                            // 带图版行内配图（非整段图）：占位提示
+                            append("［配图］")
                         }
-                    } else if (container.isImageEdition) {
-                        // 带图版行内配图（非整段图）：占位提示
-                        append("［配图］")
+                        // 文字版非缺字图标记：库构建时已移除，此处兜底不渲染
                     }
-                    // 文字版非缺字图标记：库构建时已移除，此处兜底不渲染
                 }
             }
         }
+        text to contents
     }
     Text(
         text = annotated,

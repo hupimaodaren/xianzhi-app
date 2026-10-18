@@ -38,6 +38,17 @@ class Queries(private val db: Db) {
             .map { Category(it, byCat.getValue(it)) }
     }
 
+    /** 某大分类下的书目（按 seq、id 排序），避免为单个分类加载全部书目 */
+    fun booksOfCategory(cat: String): List<Book> =
+        db.query("SELECT id, title, cat, n FROM books WHERE cat = ? ORDER BY seq, id", cat).map {
+            Book(
+                id = it.getString(0).orEmpty(),
+                title = it.getString(1).orEmpty(),
+                cat = it.getString(2).orEmpty(),
+                n = it.getInt(3),
+            )
+        }
+
     /** 某书目的篇目列表（不取正文，快） */
     fun articlesOfBook(bookId: String): List<Article> =
         db.query(
@@ -118,10 +129,6 @@ class Queries(private val db: Db) {
         if (keyword.isBlank()) return 0
         return scan(keyword).size
     }
-
-    fun bookTitle(bookId: String): String? =
-        db.query("SELECT title FROM books WHERE id = ?", bookId)
-            .firstOrNull()?.getString(0)
 
     fun totalBooks(): Int =
         db.query("SELECT count(*) FROM books").firstOrNull()?.getInt(0) ?: 0

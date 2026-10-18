@@ -23,6 +23,7 @@ class SettingsState(private val store: SettingsStore) {
         get() = _fontSize.intValue
         set(value) {
             val v = value.coerceIn(14, 28)
+            if (v == _fontSize.intValue) return   // 滑杆连续回调时避免无谓写盘
             _fontSize.intValue = v
             store.putInt(SettingsKeys.FONT_SIZE, v)
         }
@@ -32,6 +33,7 @@ class SettingsState(private val store: SettingsStore) {
         get() = _lineSpacing.value
         set(value) {
             val v = value.coerceIn(1.2f, 2.0f)
+            if (v == _lineSpacing.value) return
             _lineSpacing.value = v
             store.putFloat(SettingsKeys.LINE_SPACING, v)
         }
@@ -40,6 +42,7 @@ class SettingsState(private val store: SettingsStore) {
     var themeMode: ThemeMode
         get() = _themeMode.value
         set(value) {
+            if (value == _themeMode.value) return
             _themeMode.value = value
             store.putInt(SettingsKeys.THEME_MODE, value.value)
         }
@@ -52,6 +55,7 @@ class SettingsState(private val store: SettingsStore) {
         get() = _searchSoftLimit.intValue
         set(value) {
             val v = value.coerceIn(SOFT_MIN, SOFT_MAX)
+            if (v == _searchSoftLimit.intValue) return
             _searchSoftLimit.intValue = v
             store.putInt(SettingsKeys.SEARCH_SOFT_LIMIT, v)
             if (v > searchHardLimit) searchHardLimit = v // 保证硬阈值不小于软阈值
@@ -64,6 +68,7 @@ class SettingsState(private val store: SettingsStore) {
         get() = _searchHardLimit.intValue
         set(value) {
             val v = value.coerceIn(searchSoftLimit, HARD_MAX)
+            if (v == _searchHardLimit.intValue) return
             _searchHardLimit.intValue = v
             store.putInt(SettingsKeys.SEARCH_HARD_LIMIT, v)
         }

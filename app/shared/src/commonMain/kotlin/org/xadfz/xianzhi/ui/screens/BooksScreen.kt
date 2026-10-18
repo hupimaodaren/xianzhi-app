@@ -218,7 +218,7 @@ private fun BookListScreen(
 ) {
     val books by produceState<List<org.xadfz.xianzhi.model.Book>?>(null, cat) {
         value = withContext(ioDispatcher) {
-            container.queries.categories().firstOrNull { it.name == cat }?.books
+            container.queries.booksOfCategory(cat)
         }
     }
     Scaffold(

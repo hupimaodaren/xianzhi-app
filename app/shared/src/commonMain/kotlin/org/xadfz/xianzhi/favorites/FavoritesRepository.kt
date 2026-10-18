@@ -3,6 +3,7 @@ package org.xadfz.xianzhi.favorites
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import org.xadfz.xianzhi.db.Row
 import org.xadfz.xianzhi.db.WritableDb
 import org.xadfz.xianzhi.db.openWritableDatabase
 import org.xadfz.xianzhi.model.Collection
@@ -101,25 +102,30 @@ class FavoritesRepository(dbPath: String = "${userDataDirPath()}/favorites.db") 
                 "SELECT id, article_id, title, book_id, book_title, cat, collection_id, created_at FROM favorites WHERE collection_id = ? ORDER BY created_at DESC"
         }
         val rows = if (collectionId != null && collectionId > 0) db.query(sql, collectionId) else db.query(sql)
-        return rows.map { r ->
-            Favorite(
-                id = r.getLong(0),
-                articleId = r.getLong(1),
-                title = r.getString(2).orEmpty(),
-                bookId = r.getString(3).orEmpty(),
-                bookTitle = r.getString(4).orEmpty(),
-                cat = r.getString(5).orEmpty(),
-                collectionId = r.getString(6)?.let { r.getLong(6) },
-                createdAt = r.getLong(7),
-            )
-        }
+        return rows.map { it.toFavorite() }
     }
 
     fun isFavorited(articleId: Long): Boolean =
         db.query("SELECT 1 FROM favorites WHERE article_id = ?", articleId).isNotEmpty()
 
+    /** 按篇号取收藏（阅读页每次打开都要查一次，故直接按唯一索引定位，不做全表加载） */
     fun getFavoriteByArticleId(articleId: Long): Favorite? =
-        listFavorites(null).firstOrNull { it.articleId == articleId }
+        db.query(
+            "SELECT id, article_id, title, book_id, book_title, cat, collection_id, created_at " +
+                "FROM favorites WHERE article_id = ?",
+            articleId,
+        ).firstOrNull()?.toFavorite()
+
+    private fun Row.toFavorite(): Favorite = Favorite(
+        id = getLong(0),
+        articleId = getLong(1),
+        title = getString(2).orEmpty(),
+        bookId = getString(3).orEmpty(),
+        bookTitle = getString(4).orEmpty(),
+        cat = getString(5).orEmpty(),
+        collectionId = getString(6)?.let { getLong(6) },
+        createdAt = getLong(7),
+    )
 
     /** 收藏到指定合集；collectionId=null 表示未分组。已收藏则更新合集归属。 */
     fun addFavorite(

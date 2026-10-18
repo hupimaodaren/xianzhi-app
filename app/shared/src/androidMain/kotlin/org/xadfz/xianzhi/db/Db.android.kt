@@ -65,9 +65,21 @@ private class AndroidDb(private val db: SQLiteDatabase) : WritableDb {
         }
     }
 
-    /** 按存储类型取值：BLOB 取字节（正文块），其余取字符串 */
-    private fun cell(cursor: Cursor, i: Int): Any? =
-        if (cursor.getType(i) == Cursor.FIELD_TYPE_BLOB) cursor.getBlob(i) else cursor.getString(i)
+    /**
+     * 按存储类型取值：BLOB 取字节（正文块），整数/浮点按原类型取值，
+     * 其余取字符串。
+     *
+     * 数值列若统一按字符串取回，全库扫描（3.9 万行 × 4 个数值列）会多出
+     * 十几万次「整数转字符串再解析回整数」的开销，故此处保留类型。
+     * AndroidRow 对 Number 与 String 的处理结果一致，行为不变。
+     */
+    private fun cell(cursor: Cursor, i: Int): Any? = when (cursor.getType(i)) {
+        Cursor.FIELD_TYPE_BLOB -> cursor.getBlob(i)
+        Cursor.FIELD_TYPE_INTEGER -> cursor.getLong(i)
+        Cursor.FIELD_TYPE_FLOAT -> cursor.getDouble(i)
+        Cursor.FIELD_TYPE_NULL -> null
+        else -> cursor.getString(i)
+    }
 
     override fun exec(sql: String, vararg args: Any?) {
         db.execSQL(sql, Array(args.size) { args[it]?.toString() })
