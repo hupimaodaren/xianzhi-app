@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -43,6 +45,8 @@ import org.xadfz.xianzhi.ui.AppNavigator
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.Route
 import org.xadfz.xianzhi.ui.ThemeMode
+import org.xadfz.xianzhi.ui.SectionLabel
+import org.xadfz.xianzhi.ui.SealBadge
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 import org.xadfz.xianzhi.util.openUrl
@@ -87,6 +91,8 @@ fun SettingsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(start = side, end = side, top = 4.dp, bottom = 24.dp),
             ) {
+            SectionLabel("阅读与检索偏好")
+            Spacer(Modifier.height(10.dp))
             // 字号（14–28sp，默认 16）
             SettingCard("正文字号") {
                 Text("${settings.fontSize} sp", style = MaterialTheme.typography.bodyMedium)
@@ -124,16 +130,19 @@ fun SettingsScreen(
                         selected = settings.themeMode == ThemeMode.SYSTEM,
                         onClick = { settings.themeMode = ThemeMode.SYSTEM },
                         label = { Text("跟随系统") },
+                        shape = RoundedCornerShape(percent = 50),
                     )
                     FilterChip(
                         selected = settings.themeMode == ThemeMode.LIGHT,
                         onClick = { settings.themeMode = ThemeMode.LIGHT },
                         label = { Text("浅色") },
+                        shape = RoundedCornerShape(percent = 50),
                     )
                     FilterChip(
                         selected = settings.themeMode == ThemeMode.DARK,
                         onClick = { settings.themeMode = ThemeMode.DARK },
                         label = { Text("深色") },
+                        shape = RoundedCornerShape(percent = 50),
                     )
                 }
             }
@@ -206,7 +215,7 @@ fun SettingsScreen(
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.outline,
                     )
                 }
             }
@@ -215,14 +224,24 @@ fun SettingsScreen(
 
             // 关于
             SettingCard("关于") {
-                Text(AppInfo.APP_NAME, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    "版本 ${AppInfo.APP_VERSION} · $platformName" +
-                        (stats?.let { " · ${it.first} 部书 / ${it.second} 篇" } ?: ""),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SealBadge(text = "志", size = 38.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            AppInfo.APP_NAME,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "版本 ${AppInfo.APP_VERSION} · $platformName" +
+                                (stats?.let { " · ${it.first} 部书 / ${it.second} 篇" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 Text("数据来源：西安市地方志办公室官网（xadfz.xa.gov.cn）「志鉴浏览」")
                 Spacer(Modifier.height(10.dp))
@@ -270,13 +289,9 @@ private fun SettingCard(title: String, content: @Composable () -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(18.dp)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(10.dp))
+            // 卡片标题统一用朱砂竖条 + 小标题：与书目、收藏页的分区标签同构
+            SectionLabel(title)
+            Spacer(Modifier.height(12.dp))
             content()
         }
     }

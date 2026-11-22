@@ -18,7 +18,7 @@ object LocalIcons {
 
     val Bookmark: ImageVector by lazy {
         builder("Bookmark") {
-            path {
+            path(fill = SolidColor(Color.Black)) {
                 moveTo(17.0f, 3.0f)
                 horizontalLineTo(7.0f)
                 curveToRelative(-1.1f, 0.0f, -1.99f, 0.9f, -1.99f, 2.0f)
@@ -34,7 +34,7 @@ object LocalIcons {
 
     val BookmarkBorder: ImageVector by lazy {
         builder("BookmarkBorder") {
-            path {
+            path(fill = SolidColor(Color.Black)) {
                 moveTo(17.0f, 3.0f)
                 lineTo(7.0f, 3.0f)
                 curveToRelative(-1.1f, 0.0f, -1.99f, 0.9f, -1.99f, 2.0f)
@@ -57,7 +57,7 @@ object LocalIcons {
 
     val ExpandLess: ImageVector by lazy {
         builder("ExpandLess") {
-            path {
+            path(fill = SolidColor(Color.Black)) {
                 moveTo(12.0f, 8.0f)
                 lineToRelative(-6.0f, 6.0f)
                 lineToRelative(1.41f, 1.41f)
@@ -71,7 +71,7 @@ object LocalIcons {
 
     val ExpandMore: ImageVector by lazy {
         builder("ExpandMore") {
-            path {
+            path(fill = SolidColor(Color.Black)) {
                 moveTo(16.59f, 8.59f)
                 lineTo(12.0f, 13.17f)
                 lineTo(7.41f, 8.59f)
@@ -85,7 +85,7 @@ object LocalIcons {
 
     val DriveFileRenameOutline: ImageVector by lazy {
         builder("DriveFileRenameOutline") {
-            path {
+            path(fill = SolidColor(Color.Black)) {
                 moveTo(18.41f, 5.8f)
                 lineTo(17.2f, 4.59f)
                 curveToRelative(-0.78f, -0.78f, -2.05f, -0.78f, -2.83f, 0.0f)

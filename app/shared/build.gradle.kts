@@ -5,15 +5,16 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 
-// 从缓存中的 sqlite-jdbc 原始 jar 裁剪出仅含 Java 类与 Windows 原生库的运行时 jar
-// （非 Windows 原生库约 20.65MB；本项目双端为 Android(系统 SQLite) 与 Windows，均用不到）
-val sqliteWindowsOnlyJar = tasks.register("sqliteWindowsOnlyJar") {
+// 从缓存中的 sqlite-jdbc 原始 jar 裁剪出只保留 Java 类、services 与桌面端原生库的运行时 jar
+// （Android 用系统 SQLite，不需要任何原生库；桌面端只发布 Windows 与 macOS(Intel/Apple Silicon)，
+//  Linux / FreeBSD / Linux-Musl 等原生库约 18.35MB 全部剔除）
+val sqliteDesktopOnlyJar = tasks.register("sqliteDesktopOnlyJar") {
     group = "build"
-    description = "裁剪 sqlite-jdbc：保留 Java 类、services 与 Windows 原生库"
+    description = "裁剪 sqlite-jdbc：保留 Java 类、services 与 Windows/macOS 原生库"
     val module = libs.sqlite.jdbc.get().module.toString()
     val version = libs.sqlite.jdbc.get().versionConstraint.toString()
     val source = configurations.detachedConfiguration(dependencies.create("$module:$version"))
-    val outJar = layout.buildDirectory.file("sqlite-win/sqlite-jdbc-windows.jar")
+    val outJar = layout.buildDirectory.file("sqlite-desktop/sqlite-jdbc-desktop.jar")
     inputs.files(source)
     outputs.file(outJar)
     doLast {
@@ -31,6 +32,7 @@ val sqliteWindowsOnlyJar = tasks.register("sqliteWindowsOnlyJar") {
                             n.startsWith("META-INF/NOTICE") ||
                             n.startsWith("META-INF/versions/") ||
                             n.startsWith("org/sqlite/native/Windows/") ||
+                            n.startsWith("org/sqlite/native/Mac/") ||
                             (n.startsWith("org/sqlite/") && !n.startsWith("org/sqlite/native/"))
                     }
                     .forEach { e ->
@@ -81,9 +83,9 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
-                // sqlite-jdbc 运行时经 sqliteWindowsOnlyJar 裁剪：仅保留 Java 类与
-                // Windows 原生库（非 Windows 原生库占 20.65MB，本项目仅分发 Windows）
-                implementation(files(sqliteWindowsOnlyJar))
+                // sqlite-jdbc 运行时经 sqliteDesktopOnlyJar 裁剪：仅保留 Java 类与
+                // Windows / macOS 原生库（Linux、FreeBSD 等占 18.35MB，本项目不发布这些平台）
+                implementation(files(sqliteDesktopOnlyJar))
             }
         }
 
@@ -117,7 +119,13 @@ val desktopTestRunner = tasks.register<JavaExec>("desktopTestRunner") {
     description = "在 JVM(desktop) 上运行单元测试"
     val testCompilation = kotlin.targets.getByName("desktop").compilations.getByName("test")
     dependsOn(testCompilation.compileTaskProvider)
-    classpath = files(testCompilation.output.allOutputs) + (testCompilation.runtimeDependencyFiles ?: files())
+    // 测试要在开发机上真实读写 SQLite：主 classpath 里的 sqlite-jdbc 已被裁剪成只含
+    // Windows/macOS 原生库，Linux 开发机需额外挂一份完整 jar 才能加载本机原生库
+    val sqliteFullJar = configurations.detachedConfiguration(
+        dependencies.create(libs.sqlite.jdbc.get().let { "${it.module}:${it.versionConstraint}" }),
+    )
+    classpath = files(testCompilation.output.allOutputs) +
+        (testCompilation.runtimeDependencyFiles ?: files()) + sqliteFullJar
     mainClass.set("org.junit.runner.JUnitCore")
     doFirst {
         val classesRoot = testCompilation.output.classesDirs.first { it.exists() }

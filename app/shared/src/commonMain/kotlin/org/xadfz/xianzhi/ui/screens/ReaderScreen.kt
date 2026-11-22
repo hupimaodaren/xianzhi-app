@@ -233,7 +233,12 @@ fun ReaderScreen(
 
         // 桌面键盘：左右方向键翻篇（Windows 增强）
         val focusRequester = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focusRequester.requestFocus() }
+        LaunchedEffect(Unit) {
+            // 首个组合帧可能尚未完成布局，焦点目标未挂载时 requestFocus 会抛
+            // "FocusRequester is not initialized"；等一帧再请求，失败也不影响阅读
+            withFrameNanos { }
+            runCatching { focusRequester.requestFocus() }
+        }
 
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val hp = comfortableSidePadding(maxContent = 760.dp, min = 20.dp)

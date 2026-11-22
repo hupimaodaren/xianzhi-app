@@ -48,6 +48,11 @@ import kotlinx.coroutines.withContext
 import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.history.HistoryEntry
 import org.xadfz.xianzhi.ui.AppNavigator
+import org.xadfz.xianzhi.ui.CountBadge
+import org.xadfz.xianzhi.ui.EmptyState
+import org.xadfz.xianzhi.ui.SealBadge
+import org.xadfz.xianzhi.ui.SectionLabel
+import org.xadfz.xianzhi.ui.sealGlyph
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.formatHistoryTime
 import org.xadfz.xianzhi.util.ioDispatcher
@@ -104,6 +109,17 @@ fun HistoryScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // 摘要行：标题 + 条数，与书目/收藏页保持同一版式
+                    item(key = "history-summary") {
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SectionLabel("按最近阅读排序")
+                            Spacer(Modifier.weight(1f))
+                            CountBadge("${entries.size} 条")
+                        }
+                    }
                     items(entries, key = { it.articleId }) { entry ->
                         HistoryItem(
                             entry = entry,
@@ -152,45 +168,34 @@ private fun HistoryItem(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                shape = RoundedCornerShape(percent = 50),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(34.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        entry.title.firstOrNull()?.toString() ?: "阅",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
+            SealBadge(text = sealGlyph(entry.title).ifBlank { "阅" }, size = 38.dp)
+            Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     entry.title,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     "${entry.bookTitle} · $timeText",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.outline,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = 3.dp),
                 )
             }
-            IconButton(onClick = onRemove) {
+            IconButton(onClick = onRemove, modifier = Modifier.size(38.dp)) {
                 Icon(
                     Icons.Filled.Delete,
                     contentDescription = "删除该记录",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -200,35 +205,10 @@ private fun HistoryItem(
 @Composable
 private fun EmptyHistory(modifier: Modifier = Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(percent = 50),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        "阅",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "还没有阅读记录",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "读过的篇目会按时间倒序列在这里，点击即可继续阅读",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        EmptyState(
+            glyph = "阅",
+            title = "还没有阅读记录",
+            hint = "读过的篇目会按时间倒序列在这里，点击即可继续阅读",
+        )
     }
 }

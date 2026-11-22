@@ -6,12 +6,14 @@
 #
 # 发版 checklist：
 #   1. 更新 app/androidApp/build.gradle.kts 的 versionCode / versionName
-#   2. 更新 app/desktopApp/build.gradle.kts 的 packageVersion
+#   2. 更新 app/desktopApp/build.gradle.kts 的 appVersion（packageVersion 与其一致）
 #   3. 编辑仓库根目录 RELEASE_NOTES.md（发布说明，缺省时用自动提交记录）
 #   4. 提交并推送 main，再推 tag
 #
-# 流程：init 建草稿 Release → android / windows 并行构建并上传制品 →
+# 流程：init 建草稿 Release → android / macos / windows 并行构建并上传制品 →
 #       publish 汇总 SHA256SUMS.txt 并取消草稿正式发布。
+# 制品（共 7 个）：android text/image、macos arm64 dmg、windows text/image 的
+#       exe 与 portable zip。
 # 数据源：本仓库 data-v2 Release（db + 缺字图 + 配图，由 .github/workflows 外脚本维护）。
 # 需要的 Secrets：KEYSTORE_BASE64（签名密钥库 base64）、KEYSTORE_PASSWORD（密钥口令）。
 
@@ -102,6 +104,52 @@ jobs:
           ls -la staging
           gh release upload "$TAG" staging/* --clobber
 
+  macos:
+    needs: init
+    runs-on: macos-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Download data
+        run: |
+          mkdir -p dl data
+          # 只取文字版所需的两项，避免下载数百 MB 的配图包
+          gh release download "$DATA_TAG" --dir dl --pattern 'xianzhi.db' --pattern 'missing_chars.zip'
+          cp dl/xianzhi.db data/
+          unzip -q dl/missing_chars.zip -d data
+          ls data; du -sh data
+      - name: Build DMG
+        working-directory: app
+        run: |
+          chmod +x gradlew
+          # 内置数据目录与 Windows 相同：desktopApp/build/app-resources/common/data
+          res="desktopApp/build/app-resources/common/data"
+          mkdir -p "$res"
+          cp ../data/xianzhi.db "$res"/
+          cp -R ../data/missing_chars "$res"/
+          ./gradlew :desktopApp:packageReleaseDmg --no-daemon --stacktrace
+      - name: Verify bundle data
+        run: |
+          APP="app/desktopApp/build/compose/binaries/main-release/app/xianzhi.app"
+          [ -d "$APP" ] || { echo "::error::未生成 xianzhi.app"; exit 1; }
+          [ -f "$APP/Contents/app/resources/data/xianzhi.db" ] || { echo "::error::bundle 缺 xianzhi.db"; exit 1; }
+          [ -d "$APP/Contents/app/resources/data/missing_chars" ] || { echo "::error::bundle 缺 missing_chars"; exit 1; }
+          du -sh "$APP/Contents/app/resources/data"
+      - name: Stage and upload
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"; VER="${TAG#v}"
+          ARCH="$(uname -m)"; [ "$ARCH" = "arm64" ] || ARCH="x64"
+          DMG="$(ls app/desktopApp/build/compose/binaries/main-release/dmg/*.dmg | head -1)"
+          mkdir -p staging
+          cp "$DMG" "staging/xianzhi-${VER}-macos-${ARCH}.dmg"
+          ls -la staging
+          gh release upload "$TAG" staging/* --clobber
+
   windows:
     needs: init
     runs-on: windows-latest
@@ -173,7 +221,7 @@ jobs:
           gh release upload "${{ needs.init.outputs.tag }}" staging\* --clobber
 
   publish:
-    needs: [init, android, windows]
+    needs: [init, android, macos, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -182,7 +230,8 @@ jobs:
           TAG="${{ needs.init.outputs.tag }}"
           mkdir -p dist && cd dist
           gh release download "$TAG" --dir . --pattern 'xianzhi-*'
-          [ "$(ls xianzhi-* | wc -l)" -eq 6 ] || { echo "::error::制品不足 6 个"; ls -la; exit 1; }
+          # Android 2 + Windows 4 + macOS 1 = 7 个制品
+          [ "$(ls xianzhi-* | wc -l)" -eq 7 ] || { echo "::error::制品不足 7 个"; ls -la; exit 1; }
           sha256sum xianzhi-* | tee SHA256SUMS.txt
           gh release upload "$TAG" SHA256SUMS.txt --clobber
       - name: Publish release

@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -108,13 +110,24 @@ private fun InlineParagraph(
         }
         text to contents
     }
+    // 中文正文排版：段首空两字（仅对成句的正文段落，短行如目录式条目保持齐头），
+    // 段间留白略大于行距，使整页呈「行内紧密、段间舒展」的典籍观感
+    // 段首缩进两字：直接用 sp 而非 em —— em 依赖样式里的字号换算像素，
+    // 而文本样式在段落构建器中可能尚未解析出字号，会抛 "Only Sp can convert to Px"
+    val indent = if (paragraph.length >= 20) TextIndent(firstLine = (fontSize * 2).sp) else TextIndent.None
+    // 字号、行距、颜色必须与 textIndent 一起放进 TextStyle：
+    // 若 style 里字号留空（Unspecified）而段首缩进用 em，段落构建器无法换算成像素
     Text(
         text = annotated,
         inlineContent = inlineContents,
-        fontSize = fontSize.sp,
-        lineHeight = (fontSize * lineSpacing).sp,
-        fontFamily = FontFamily.SansSerif,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        style = androidx.compose.ui.text.TextStyle(
+            fontSize = fontSize.sp,
+            lineHeight = (fontSize * lineSpacing).sp,
+            fontFamily = FontFamily.SansSerif,
+            color = MaterialTheme.colorScheme.onSurface,
+            textIndent = indent,
+        ),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
     )
 }
 
@@ -135,7 +148,8 @@ private fun BlockImage(file: String, container: AppContainer) {
         contentDescription = "配图",
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 10.dp)
+            .clip(MaterialTheme.shapes.small)
             .clickable { zoomed = true },
     )
     if (zoomed) {
@@ -166,7 +180,8 @@ private fun AnnotatedString.Builder.appendHighlighted(text: String, keyword: Str
             break
         }
         append(text.substring(start, idx))
-        withStyle(SpanStyle(background = Color(0xFFFFEB3B))) {
+        // 藤黄纸色底纹替代刺眼纯黄，与宣纸基调同属暖调，长段高亮不炫目
+        withStyle(SpanStyle(background = Color(0xFFF2D9A0))) {
             append(text.substring(idx, idx + keyword.length))
         }
         start = idx + keyword.length

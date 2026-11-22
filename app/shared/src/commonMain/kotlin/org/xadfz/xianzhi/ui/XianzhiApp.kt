@@ -38,10 +38,12 @@ fun XianzhiApp(
     initialBookTitle: String = "",
     initialHighlight: String? = null,
     initialQuery: String = "",
+    initialHistory: Boolean = false,
 ) {
     val navigator = remember {
         AppNavigator().apply {
             if (initialTab in 1..3) goTab(initialTab)
+            if (initialHistory) push(Route.History)
             initialCat?.let { push(Route.BookList(it)) }
             if (initialBookId != null) push(Route.ArticleList(initialBookId, initialBookTitle))
             initialArticleId?.let { openChapter(it, initialHighlight) }

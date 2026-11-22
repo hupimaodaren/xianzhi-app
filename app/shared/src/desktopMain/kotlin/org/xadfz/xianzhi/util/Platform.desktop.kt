@@ -7,11 +7,23 @@ actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
 actual fun fileExists(path: String): Boolean = java.io.File(path).exists()
 
-actual val platformName: String =
-    "Windows" + (System.getProperty("os.version")?.takeIf { it.isNotBlank() }?.let { " $it" } ?: "")
+private val osName: String = System.getProperty("os.name").orEmpty()
+
+/** 桌面端三平台（Windows / macOS / Linux）统一按 os.name 判断，供窗口与文案复用 */
+actual val platformName: String = run {
+    val family = when {
+        osName.startsWith("Mac", ignoreCase = true) -> "macOS"
+        osName.startsWith("Windows", ignoreCase = true) -> "Windows"
+        osName.startsWith("Linux", ignoreCase = true) -> "Linux"
+        osName.isBlank() -> "Desktop"
+        else -> osName
+    }
+    val version = System.getProperty("os.version")?.takeIf { it.isNotBlank() }
+    if (version != null) "$family $version" else family
+}
 
 actual fun openUrl(url: String) {
-    // Windows 用系统默认浏览器打开；AWT Desktop 失败时回退 rundll32
+    // 优先走 AWT 系统默认浏览器；失败时按平台回退到系统命令
     val ok = runCatching {
         if (java.awt.Desktop.isDesktopSupported() &&
             java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)
@@ -22,9 +34,14 @@ actual fun openUrl(url: String) {
             false
         }
     }.getOrDefault(false)
-    if (!ok) {
-        Runtime.getRuntime().exec(arrayOf("rundll32", "url.dll,FileProtocolHandler", url))
+    if (ok) return
+    val command = when {
+        osName.startsWith("Mac", ignoreCase = true) -> arrayOf("open", url)
+        osName.startsWith("Windows", ignoreCase = true) ->
+            arrayOf("rundll32", "url.dll,FileProtocolHandler", url)
+        else -> arrayOf("xdg-open", url)
     }
+    Runtime.getRuntime().exec(command)
 }
 
 actual fun userDataDirPath(): String =

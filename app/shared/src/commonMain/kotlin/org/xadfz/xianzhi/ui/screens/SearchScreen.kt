@@ -2,6 +2,7 @@ package org.xadfz.xianzhi.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -68,12 +71,14 @@ import org.xadfz.xianzhi.model.SearchHit
 import org.xadfz.xianzhi.search.SearchGrouping
 import org.xadfz.xianzhi.search.SearchSnippet
 import org.xadfz.xianzhi.ui.AppNavigator
+import org.xadfz.xianzhi.ui.CountBadge
 import org.xadfz.xianzhi.ui.LocalIcons
 import org.xadfz.xianzhi.ui.LocalSettings
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 
-private val HIGHLIGHT_COLOR = Color(0xFFFFEB3B)
+// 藤黄纸色高亮，替代纯黄以贴合宣纸底、减轻长列表的眩光
+private val HIGHLIGHT_COLOR = Color(0xFFF2D9A0)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -210,38 +215,60 @@ fun SearchScreen(
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val side = comfortableSidePadding(maxContent = 820.dp)
             Column(Modifier.fillMaxSize()) {
-            OutlinedTextField(
-                value = session.query,
-                onValueChange = { session.query = it },
-                modifier = Modifier
+            // 检索条：输入框与「检索」按钮同一行，按钮随输入可用性变化，
+            // 桌面端不必依赖回车，触屏端也能明确点到触发点
+            Row(
+                Modifier
                     .fillMaxWidth()
                     .padding(start = side, end = side, top = 8.dp, bottom = 4.dp),
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                placeholder = { Text("全库检索 ${totalArticles ?: 38978} 篇志书文献") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (session.query.isNotEmpty()) {
-                        androidx.compose.material3.IconButton(onClick = {
-                            session.clear()
-                        }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "清除")
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = session.query,
+                    onValueChange = { session.query = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    shape = RoundedCornerShape(28.dp),
+                    placeholder = {
+                        Text(
+                            "全库检索 ${totalArticles ?: 38978} 篇志书文献",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (session.query.isNotEmpty()) {
+                            androidx.compose.material3.IconButton(onClick = {
+                                session.clear()
+                            }) {
+                                Icon(Icons.Filled.Clear, contentDescription = "清除")
+                            }
                         }
-                    }
-                },
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onSearch = { doSearch(session.query) },
-                ),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = ImeAction.Search,
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
+                    },
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSearch = { doSearch(session.query) },
+                    ),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = ImeAction.Search,
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                )
+                Spacer(Modifier.width(10.dp))
+                androidx.compose.material3.Button(
+                    onClick = { doSearch(session.query) },
+                    enabled = session.query.isNotBlank() && !searching,
+                    shape = RoundedCornerShape(24.dp),
+                    contentPadding = PaddingValues(horizontal = 22.dp, vertical = 14.dp),
+                ) {
+                    Text("检索", style = MaterialTheme.typography.labelLarge)
+                }
+            }
 
             when {
                 searching -> if (progressTarget > 0) {
@@ -288,17 +315,30 @@ fun SearchScreen(
                         SearchGrouping.groupByCategory(session.results)
                     }
                     val expanded = session.expandedCats
-                    Text(
-                        buildString {
-                            append("命中 ${session.totalHits} 篇 · ${groups.size} 个书目分类 · 点击分类展开/收起")
-                            if (session.cappedAt > 0) {
-                                append("（已达上限，仅展示前 ${session.cappedAt} 篇）")
-                            }
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = side, end = side, top = 8.dp, bottom = 4.dp),
-                    )
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = side, end = side, top = 10.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "命中 ${session.totalHits} 篇",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            buildString {
+                                append("${groups.size} 个书目分类 · 点击展开/收起")
+                                if (session.cappedAt > 0) {
+                                    append("（已达上限，仅展示前 ${session.cappedAt} 篇）")
+                                }
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
@@ -323,6 +363,8 @@ fun SearchScreen(
                                     ResultCard(
                                         hit = hit,
                                         keyword = session.activeKeyword,
+                                        // 展开后的命中项向右缩进，形成「分类 > 篇目」的层级感
+                                        modifier = Modifier.padding(start = 8.dp),
                                         onClick = {
                                             navigator.openChapter(hit.id, session.activeKeyword)
                                         },
@@ -344,7 +386,8 @@ fun SearchScreen(
                         Text(
                             "搜索历史",
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                         TextButton(onClick = {
                             container.searchHistory.clear()
@@ -418,7 +461,8 @@ fun SearchScreen(
 }
 
 /**
- * 书目大分类分组头：显示分类名与该类命中篇数，整行可点击展开/收起。
+ * 书目大分类分组头：左侧朱砂竖条标示分组，右侧箭头指示展开状态；
+ * 底色与结果卡片一致，靠形状与竖条区分层级，避免整片色块压过内容。
  */
 @Composable
 private fun CategoryHeader(
@@ -427,37 +471,40 @@ private fun CategoryHeader(
     expanded: Boolean,
     onClick: () -> Unit,
 ) {
-    val fg = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 0.dp,
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = if (expanded) LocalIcons.ExpandLess else LocalIcons.ExpandMore,
-                contentDescription = if (expanded) "收起" else "展开",
-                tint = fg,
-                modifier = Modifier.size(20.dp),
+            Box(
+                Modifier
+                    .size(width = 3.dp, height = 14.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(
+                        if (expanded) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline,
+                    ),
             )
             Spacer(Modifier.width(10.dp))
             Text(
                 category,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                "$count 篇",
-                style = MaterialTheme.typography.labelMedium,
-                color = fg,
+            CountBadge("$count 篇")
+            Spacer(Modifier.width(6.dp))
+            Icon(
+                imageVector = if (expanded) LocalIcons.ExpandLess else LocalIcons.ExpandMore,
+                contentDescription = if (expanded) "收起" else "展开",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
             )
         }
     }
@@ -469,46 +516,42 @@ private fun ResultCard(
     keyword: String,
     fallbackTitle: String = "",
     fallbackSubtitle: String = "",
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = modifier.fillMaxWidth().clickable { onClick() },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             if (hit != null) {
-                Surface(
-                    shape = RoundedCornerShape(percent = 50),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(34.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Filled.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(17.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.size(12.dp))
+                // 每张结果前的朱砂细竖条：在长结果集中形成稳定的视觉锚点
+                Box(
+                    Modifier
+                        .padding(top = 3.dp)
+                        .size(width = 3.dp, height = 26.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+                )
+                Spacer(Modifier.width(11.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(
                     highlightText(hit?.title ?: fallbackTitle, keyword),
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     hit?.let { "${it.cat} · ${it.bookTitle}" } ?: fallbackSubtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.outline,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),

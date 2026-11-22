@@ -5,7 +5,7 @@
 - **数据来源**：[xadfz.xa.gov.cn](http://xadfz.xa.gov.cn)（西安市地方志办公室官网，政府公开信息）
 - **建设单位**：西安地名协会
 - **技术栈**：Kotlin Multiplatform + Compose Multiplatform（Material 3）
-- **目标平台**：Android + Windows（iOS 预留）
+- **目标平台**：Android + Windows + macOS（iOS 预留）
 - **发布形态**：文字版（主力）+ 带图版（研究）
 
 ## 数据规模
@@ -36,26 +36,43 @@
 |---|---|
 | [![全文检索](docs/screenshots/search.png)](docs/screenshots/search.png) | [![阅读](docs/screenshots/reader.png)](docs/screenshots/reader.png) |
 
+| 收藏（按合集分组） | 最近阅读 |
+|---|---|
+| [![收藏](docs/screenshots/favorites.png)](docs/screenshots/favorites.png) | [![最近阅读](docs/screenshots/history.png)](docs/screenshots/history.png) |
+
 ## 下载
 
-最新版本：[**v0.5.1**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.5.1)
+最新版本：[**v0.6.0**](https://github.com/hupimaodaren/xianzhi-app/releases/tag/v0.6.0)
 
 数据已全部内置，无需单独下载数据文件。
 
 | 平台 | 纯文字版 | 完整图文版 |
 |---|---|---|
-| Android | `xianzhi-0.5.1-android-text.apk`（约 75 MB） | `xianzhi-0.5.1-android-image.apk`（约 589 MB） |
-| Windows 安装程序 | `xianzhi-0.5.1-windows-text.exe`（约 122 MB） | `xianzhi-0.5.1-windows-image.exe`（约 617 MB） |
-| Windows 便携免安装 | `xianzhi-0.5.1-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.5.1-windows-image-portable.zip`（约 620 MB） |
+| Android | `xianzhi-0.6.0-android-text.apk`（约 75 MB） | `xianzhi-0.6.0-android-image.apk`（约 589 MB） |
+| Windows 安装程序 | `xianzhi-0.6.0-windows-text.exe`（约 122 MB） | `xianzhi-0.6.0-windows-image.exe`（约 617 MB） |
+| Windows 便携免安装 | `xianzhi-0.6.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.6.0-windows-image-portable.zip`（约 620 MB） |
+| macOS（Apple Silicon） | `xianzhi-0.6.0-macos-arm64.dmg`（约 130 MB） | — |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 
 ```bash
 # Windows PowerShell
-Get-FileHash xianzhi-0.5.1-windows-text.exe -Algorithm SHA256
+Get-FileHash xianzhi-0.6.0-windows-text.exe -Algorithm SHA256
+
+# macOS
+shasum -a 256 xianzhi-0.6.0-macos-arm64.dmg
 ```
 
 > 说明：早期 `data v1` Release 中的数据资产（数据库、配图压缩包等）已全部清空删除，数据改由安装包内置分发，该 tag 仅作历史标记保留。
+
+### v0.6.0 主要更新（界面美化 + macOS 版）
+
+1. **全新界面语言**：以「宣纸 / 墨 / 朱砂」为基调重做视觉层——印章式徽标与序号、朱砂竖条章节标题、圆角胶囊计数标签、细线卡片与统一留白节奏；书目、检索、阅读、收藏、历史、设置六页逐页对齐同一套构件（`ui/CommonUi.kt`：SealBadge / CountBadge / SectionLabel / EmptyState）。
+2. **导航重做**：侧栏与底部导航的选中态改为朱砂淡底胶囊 + 按压缩放动画；宽屏侧栏与窄屏底栏共用同一套图标与节奏。
+3. **阅读页排版**：标题层级、朱砂短横导语、段首两字缩进、正文版心与配图圆角统一，检索关键词高亮改为暖黄底衬。
+4. **收藏 / 最近阅读**：新增合集摘要行、胶囊式筛选、印章首字条目与统一空态插画，副标题去重（不再出现「西安市志 · 西安市志（…）」）。
+5. **macOS 版发布**：新增 Apple Silicon 原生 DMG（未签名，首次打开需在「隐私与安全性」中放行）；桌面端按 `os.name` 分支处理平台名与打开链接（`open`/`xdg-open`），设置与数据落在 `~/Library/Application Support/xianzhi`；sqlite-jdbc 裁剪策略由「仅 Windows」改为「Windows + macOS」，三端共用同一份构建脚本。
+6. **构建与发布**：`:shared:desktopTestRunner` 在开发机上补挂完整 sqlite-jdbc（修改前仅能在 Windows 跑测试）；`:desktopApp:screenshot` 离屏截图任务支持 `-Pshots.*` 参数透传（主题/尺寸/单页），用于本次全站视觉核对。
 
 ### v0.5.1 主要更新（性能与工程优化）
 
@@ -112,6 +129,15 @@ Get-FileHash xianzhi-0.5.1-windows-text.exe -Algorithm SHA256
 2. 安装时需允许「未知来源」应用
 3. 首次启动会释放内置数据库到应用私有目录，约 1 分钟（图文版另需约 520 MB 图片存储空间），期间有进度提示，请勿杀后台
 4. 系统要求：Android 7.0（API 24）及以上
+
+### macOS
+
+1. 下载 `xianzhi-0.6.0-macos-arm64.dmg`，双击打开后把「西安志」拖入「应用程序」
+2. 首次启动会被 Gatekeeper 拦截（未做代码签名与公证）：在「系统设置 → 隐私与安全性」页底部点击「仍要打开」，或对 App 右键选择「打开」
+3. 设置与数据存放在 `~/Library/Application Support/xianzhi`
+4. 系统要求：macOS 11 及以上，Apple Silicon（M 系列）原生运行；Intel Mac 需通过 Rosetta 2 运行
+
+> 说明：macOS 版目前只提供纯文字版 DMG。App 的主要发布平台仍是 Windows/Android，桌面版界面与交互三端一致。
 
 ### Windows
 

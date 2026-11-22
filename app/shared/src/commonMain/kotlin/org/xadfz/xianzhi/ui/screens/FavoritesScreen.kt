@@ -58,7 +58,12 @@ import org.xadfz.xianzhi.data.AppContainer
 import org.xadfz.xianzhi.model.Collection
 import org.xadfz.xianzhi.model.Favorite
 import org.xadfz.xianzhi.ui.AppNavigator
+import org.xadfz.xianzhi.ui.CountBadge
+import org.xadfz.xianzhi.ui.EmptyState
 import org.xadfz.xianzhi.ui.LocalIcons
+import org.xadfz.xianzhi.ui.SealBadge
+import org.xadfz.xianzhi.ui.SectionLabel
+import org.xadfz.xianzhi.ui.sealGlyph
 import org.xadfz.xianzhi.ui.comfortableSidePadding
 import org.xadfz.xianzhi.util.ioDispatcher
 
@@ -124,12 +129,23 @@ fun FavoritesScreen(
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val side = comfortableSidePadding(maxContent = 860.dp)
             Column(Modifier.fillMaxSize()) {
+                // 当前合集摘要：左侧朱砂竖条标题 + 右侧篇数，与书目页统计行同构
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = side, end = side, top = 6.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionLabel(selectedColl?.name ?: if (selectedId == -1L) "未分组" else "全部收藏")
+                    Spacer(Modifier.weight(1f))
+                    CountBadge("${favorites.size} 篇")
+                }
                 // 合集选择行
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(start = side, end = side, top = 8.dp, bottom = 4.dp),
+                        .padding(start = side, end = side, top = 6.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -138,10 +154,23 @@ fun FavoritesScreen(
                             selected = selectedId == f.id,
                             onClick = { selectedId = f.id },
                             label = { Text(f.label) },
+                            shape = RoundedCornerShape(percent = 50),
                         )
                     }
-                    IconButton(onClick = { showNewColl = true }) {
-                        Icon(Icons.Filled.Add, contentDescription = "新建合集")
+                    // 新建合集：与 chip 同高的圆形按钮，避免行内出现孤立的方形图标按钮
+                    Surface(
+                        shape = RoundedCornerShape(percent = 50),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.size(36.dp).clickable { showNewColl = true },
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "新建合集",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(19.dp),
+                            )
+                        }
                     }
                 }
 
@@ -227,39 +256,35 @@ private fun FavoriteItem(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                shape = RoundedCornerShape(percent = 50),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(34.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        LocalIcons.Bookmark,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(17.dp),
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
+            // 以篇目标题首字作印章，与书目页的分类印章保持同一视觉语言
+            SealBadge(text = sealGlyph(fav.title), size = 38.dp)
+            Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     fav.title,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    if (fav.cat.isBlank()) fav.bookTitle else "${fav.cat} · ${fav.bookTitle}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 3.dp),
+                ) {
+                    Text(
+                        // 栏目名已是书名前缀时（如「西安市志」与「西安市志（1991-2010）· 第一卷」）不再重复
+                        if (fav.cat.isBlank() || fav.bookTitle.startsWith(fav.cat)) fav.bookTitle
+                        else "${fav.cat} · ${fav.bookTitle}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
             }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
@@ -368,37 +393,11 @@ private fun MoveOption(name: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun EmptyFavorites(hasCollections: Boolean, modifier: Modifier = Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(percent = 50),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(72.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        LocalIcons.BookmarkBorder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "还没有收藏",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                if (hasCollections) "阅读时点击书签图标即可收藏"
-                else "阅读时点击书签图标收藏，可在此新建合集分组",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        EmptyState(
+            glyph = "藏",
+            title = "还没有收藏",
+            hint = if (hasCollections) "阅读时点击书签图标即可收藏"
+            else "阅读时点击书签图标收藏，可在此新建合集分组",
+        )
     }
 }
