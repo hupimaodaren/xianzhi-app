@@ -51,7 +51,7 @@
 | Android | `xianzhi-0.6.0-android-text.apk`（约 75 MB） | `xianzhi-0.6.0-android-image.apk`（约 589 MB） |
 | Windows 安装程序 | `xianzhi-0.6.0-windows-text.exe`（约 122 MB） | `xianzhi-0.6.0-windows-image.exe`（约 617 MB） |
 | Windows 便携免安装 | `xianzhi-0.6.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.6.0-windows-image-portable.zip`（约 620 MB） |
-| macOS（Apple Silicon） | `xianzhi-0.6.0-macos-arm64.dmg`（约 130 MB） | — |
+| macOS（Apple Silicon） | `xianzhi-0.6.0-macos-arm64.dmg`（约 133 MB） | — |
 
 同一 Release 内提供 `SHA256SUMS.txt`，下载后可校验完整性：
 

@@ -41,7 +41,7 @@
 | Android | `xianzhi-0.6.0-android-text.apk`（约 75 MB） | `xianzhi-0.6.0-android-image.apk`（约 589 MB） |
 | Windows 安装程序 | `xianzhi-0.6.0-windows-text.exe`（约 122 MB） | `xianzhi-0.6.0-windows-image.exe`（约 617 MB） |
 | Windows 便携免安装 | `xianzhi-0.6.0-windows-text-portable.zip`（约 121 MB） | `xianzhi-0.6.0-windows-image-portable.zip`（约 620 MB） |
-| macOS（Apple Silicon） | `xianzhi-0.6.0-macos-arm64.dmg`（约 130 MB） | — |
+| macOS（Apple Silicon） | `xianzhi-0.6.0-macos-arm64.dmg`（约 133 MB） | — |
 
 - **纯文字版**：含全部 38,978 篇正文与 4,794 个缺字图；检索、阅读、收藏、最近阅读、设置功能完整。
 - **完整图文版**：在文字版基础上内置全部 7,975 张配图，体积较大但无需联网。
