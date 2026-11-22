@@ -166,7 +166,7 @@ shasum -a 256 xianzhi-0.6.0-macos-arm64.dmg
 
 | 方式 | 说明 |
 |------|------|
-| **用本 App Windows 版自带的数据库**（已安装用户推荐） | 无需额外下载。EXE 安装版位于 `%APPDATA%\xianzhi\data\`；便携版位于解压目录 `app/resources/data/`。MCP Server 会自动发现 |
+| **用本 App 桌面版自带的数据库**（已安装用户推荐） | 无需额外下载。Windows EXE 安装版位于 `%APPDATA%\xianzhi\data\`，便携版位于解压目录 `app/resources/data/`；macOS 版位于 `~/Library/Application Support/xianzhi/data/`。MCP Server 会自动发现 |
 | **从 MCP 仓库单独下载** | 未装本 App 也能用：[xianzhi-mcp Releases](https://github.com/hupimaodaren/xianzhi-mcp/releases) 提供 v2 压缩版 `xianzhi.db`（60.7 MB，文字版），与 `xianzhi-mcp.exe` 放同一目录即可 |
 
 > 下载 `xianzhi-mcp.exe`（约 31 MB，免装 Python，v0.1.1 起同时识别 v1/v2 库）后，按 MCP 仓库 README 的「3 步上手」接入 Agent，其中含 WorkBuddy 与 DeepSeek Harness 的配置方法。
